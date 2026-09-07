@@ -30,10 +30,13 @@ export function LiveSessionsCard({
   sessions,
   usage,
   now,
+  bare = false,
 }: {
   sessions: ClaudeSession[];
   usage: Usage;
   now: number;
+  /** Açık sunum: yüzey yok, modül doğrudan alanın üstünde durur */
+  bare?: boolean;
 }) {
   const [pressed, setPressed] = useState(false);
   const live = sessions.filter((s) => s.status !== "closed");
@@ -60,11 +63,8 @@ export function LiveSessionsCard({
       onPointerCancel={release}
       onPointerLeave={release}
       aria-label={`${live.length} canlı Claude oturumu — Claude ekranına git`}
-      className="animate-card-in flex h-full min-h-0 w-full flex-col rounded-[26px] p-5 text-left"
+      className={`flex h-full min-h-0 w-full flex-col text-left ${bare ? "" : "surface animate-card-in rounded-[var(--r-lg)] p-5"}`}
       style={{
-        background: "linear-gradient(180deg, var(--card-top), var(--card-bottom))",
-        boxShadow:
-          "inset 0 2px 0 var(--card-highlight), inset 0 0 0 1px var(--card-ring), var(--card-shadow)",
         transform: pressed ? "scale(0.985)" : undefined,
         transition: "transform 120ms var(--ease-out-strong)",
       }}

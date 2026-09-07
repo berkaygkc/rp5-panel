@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
 
 /**
- * Temel yüzey — cam hissi veren modern kart: yukarıdan aşağı incelen
- * gradyan + üst kenarda ışık yakalayan iç vurgu (blur yok, statik boyama).
- * Kart layout-agnostic'tir: parent'ın verdiği alanı doldurur.
+ * Birincil yüzey. Şerit ekranda hiyerarşi kutu çizerek değil, yalnızca öne
+ * çıkması gereken modüle yüzey vererek kurulur — ikincil modüller alanın
+ * üstünde açıkta durur. Bu yüzden Card'ı yalnızca "kahraman" için kullanın.
  */
 export function Card({
   title,
@@ -21,17 +21,11 @@ export function Card({
 }) {
   return (
     <section
-      className={`flex min-h-0 min-w-0 flex-col rounded-[26px] ${compact ? "p-4" : "p-5"} ${className}`}
-      style={{
-        background:
-          "linear-gradient(180deg, var(--card-top), var(--card-bottom))",
-        boxShadow:
-          "inset 0 2px 0 var(--card-highlight), inset 0 0 0 1px var(--card-ring), var(--card-shadow)",
-      }}
+      className={`surface flex min-h-0 min-w-0 flex-col rounded-[var(--r-lg)] ${compact ? "p-4" : "p-5"} ${className}`}
     >
       {title && (
-        <header className="mb-3 flex shrink-0 items-baseline justify-between gap-3">
-          <h2 className="text-[13.5px] font-medium text-dim">{title}</h2>
+        <header className="mb-3 flex h-6 shrink-0 items-center justify-between gap-3">
+          <h2 className="text-[12.5px] font-medium leading-none tracking-[0.01em] text-dim">{title}</h2>
           {right}
         </header>
       )}
