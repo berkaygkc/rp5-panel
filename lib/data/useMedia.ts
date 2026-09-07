@@ -5,7 +5,7 @@ import { getCore, useCapability } from "@/lib/data/core";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { MediaActions, MediaSource, MediaState, Track } from "@/lib/types/media";
 
-/** Mac ajanı adresi (ör. ws://192.168.1.20:17705). Boşsa bağlantı kurulmaz, kart görünmez. */
+/** Medya durumu çekirdekteki "media" alanından gelir; kaynak hangi cihaz olursa olsun. */
 
 
 /* ── Tel protokolü — clients/mac-agent/src/protocol.ts ile senkron tutun ── */

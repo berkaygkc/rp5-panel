@@ -27,21 +27,21 @@ Built with Next.js 16, React 19, Tailwind v4 and Prisma. Only real data, only re
 ## How it fits together
 
 ```
- Raspberry Pi 5, Chromium kiosk (1973×426 CSS px)       Your Mac
- ┌──────────────────────────────┐      HTTP + SSE     ┌────────────────────────────────┐
- │  Panel UI                    │◄───────────────────►│  Next.js app        :3012      │
- │  http://<mac>.local:3012     │                     │   /api/config  /api/notices    │
- │                              │      WebSocket      │   /admin       SQLite (Prisma) │
- │                              │◄───────────────────►│  Mac agent          :17705     │
- └──────────────────────────────┘                     │   Spotify · Music · MediaRemote│
-                                                      │   Claude Code · Spark mail     │
-                                                      │   AppleScript shortcuts        │
-                                                      └───────────────┬────────────────┘
-                                                                      │ REST
-                                                       Beszel hub (Docker) ◄── Beszel agents on your servers
+                         ┌──────────────────────────────────┐
+   Mac agent ───────────►│                                  │
+   (provider, dials out) │   Core — Next.js            :3012│
+                         │   /ws   one socket, two roles    │
+   Pi kiosk   ──────────►│   /api  config · notices · admin │
+   Phone      ──────────►│   SQLite (Prisma)                │
+   Browser    ──────────►│                                  │
+   (surfaces)            └───────────────┬──────────────────┘
+                                         │ REST
+                          Beszel hub ◄── agents on your servers
 ```
 
-The Next.js app is the hub. It serves the kiosk UI, holds the configuration database, receives notices from every producer and streams them to the panel over SSE. The Mac agent is a thin Node process that talks to macOS (AppleScript, `media-control`, local files) and speaks a small JSON protocol over WebSocket.
+The Next.js app is the core, and everything else dials into it. There are two roles on the single `/ws` socket. A **provider** announces what it can do; the Mac agent connects outward with a device token, so nothing needs to be reachable on the machine it runs on and the core can sit on a remote host. A **surface** is a screen: the Pi, a phone, a browser tab. Surfaces subscribe to state domains and send intents; the core finds a provider for the capability, forwards the work and carries the acknowledgement back.
+
+The core keeps the last value of every domain, so a surface that connects late opens already full, and it publishes presence so a provider that drops out is visible rather than silently stale. Devices enrol from the console, where a token is issued once and stored only as a hash.
 
 ## Requirements
 
@@ -77,7 +77,7 @@ On first run macOS asks the agent's terminal for automation permission for Spoti
 
 ### Pi kiosk
 
-Point Chromium in kiosk mode at `http://<your-mac>.local:3012`. Using the Bonjour name means the Mac's DHCP address can change without breaking the panel. The kiosk derives the agent's WebSocket address from the page host, so leave `NEXT_PUBLIC_MEDIA_WS` empty unless the agent runs on another machine.
+Point Chromium in kiosk mode at the core's address, for example `http://<your-mac>.local:3012` on a LAN or your own domain once the core is hosted. The kiosk opens one socket back to whatever host served the page, so there is nothing else to configure on the device.
 
 The Next.js dev server only serves LAN origins it knows about. Set `PANEL_LAN_SUBNET` if your network is not `192.168.1.x`.
 
@@ -96,6 +96,7 @@ The Next.js dev server only serves LAN origins it knows about. Set `PANEL_LAN_SU
 | Infra | Beszel connection with a connection test, server display names, order and visibility, disk threshold, poll interval |
 | Mail | Excluded account patterns, notice and list limits |
 | Settings | Default theme, lock timeout, rail start slots, Claude waiting threshold |
+| Devices | Providers and surfaces on the core, enrolment tokens, revocation |
 | Security | Kiosk PIN and admin password |
 
 The console is keyboard-first: `⌘K` opens a command palette for navigation and quick actions, `⌘S` saves whatever page you are editing, and `Esc` closes drawers. A status strip across the top carries the live state of the agent, the Beszel hub and the chat sources on every page, and the dashboard opens with a to-scale diagram of the kiosk itself. Colour is reserved for state and for kiosk screen tints; the chrome is achromatic.
@@ -156,8 +157,10 @@ Enter both under Admin → Chat, which includes a connection test and the exact 
 | `BESZEL_URL`, `BESZEL_EMAIL`, `BESZEL_PASSWORD` | panel `.env.local` | Seed values for the Beszel connection; edit later in the admin panel |
 | `PANEL_DATA_DIR` | panel | Directory for `panel.db` and `notices.json`, default `./.data` |
 | `PANEL_LAN_SUBNET` | panel | Subnet allowed to load the dev server, default `192.168.1` |
-| `NEXT_PUBLIC_MEDIA_WS` | panel | Agent address override; leave empty to derive from the page host |
-| `PANEL_URL`, `PANEL_NOTICE_TOKEN` | agent `.env` | Where the agent posts notices and pulls its configuration |
+| `PORT` | core | Port for HTTP and the `/ws` socket, default 3012 |
+| `PANEL_URL` | agent `.env` | The core to dial; the agent derives `ws(s)://…/ws` from it |
+| `DEVICE_TOKEN`, `DEVICE_NAME` | agent `.env` | Enrolment token issued by the console, and how the device names itself |
+| `PANEL_NOTICE_TOKEN` | agent `.env` | Shared secret for posting notices over HTTP |
 
 Everything else (PIN, lock timeout, theme, rail slots, thresholds, mail exclusions) lives in the database and is edited in the admin panel.
 

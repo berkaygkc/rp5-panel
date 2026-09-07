@@ -3,7 +3,8 @@
  *   npm run dev   → gerçek kaynaklar (Spotify / Apple Music / MediaRemote) + Claude Code izleme
  *   npm run demo  → sentetik çalar (hiçbir uygulamaya dokunmaz)
  *
- * Panel tarafı: .env.local içine NEXT_PUBLIC_MEDIA_WS=ws://<mac-ip>:17705
+ * Ajan bir sunucu değildir: açılışta PANEL_URL adresindeki çekirdeğe kendisi
+ * bağlanır (DEVICE_TOKEN ile), yeteneklerini bildirir ve durumunu oraya yayınlar.
  */
 import { loadDotEnv } from "./env.js";
 loadDotEnv();
@@ -17,14 +18,10 @@ import { MailMonitor } from "./mail/spark.js";
 import { FrontmostMonitor } from "./frontmost.js";
 import { DemoPlayer } from "./sources/demo.js";
 import { runShortcut } from "./runner.js";
-import { createServer, type Client } from "./server.js";
 import { CoreLink, coreSocketUrl } from "./core.js";
-import type { ClientCommand, ServerMessage, WireMediaState } from "./protocol.js";
+import type { WireMediaState } from "./protocol.js";
 
 const DEMO = process.argv.includes("--demo");
-const portArg = process.argv.find((a) => a.startsWith("--port="));
-const PORT = portArg ? parseInt(portArg.split("=")[1], 10) : 17705;
-
 const POLL_MS = 1000;
 /** Konum bu kadar saptıysa (harici seek) yeni senkron noktası yayınla */
 const DRIFT_SEC = 1.5;
@@ -55,8 +52,8 @@ setInterval(() => void frontmost.poll(), FRONTMOST_POLL_MS);
  * çekirdeğe taşınana kadar geçici olarak açık kalır.
  */
 const coreWants = { claude: false, mail: false };
-const wantsClaude = () => coreWants.claude || server.hasClaudeSubscribers();
-const wantsMail = () => coreWants.mail || server.hasMailSubscribers();
+const wantsClaude = () => coreWants.claude;
+const wantsMail = () => coreWants.mail;
 
 let current: WireMediaState | null = null;
 let lastSent: WireMediaState | null = null;
@@ -88,7 +85,6 @@ async function poll() {
     const next = demo ? demo.state() : await live!.read();
     current = next;
     if (shouldBroadcast(next)) {
-      server.broadcast(next);
       core.publish("media", next);
       lastSent = next;
       lastSentAt = Date.now();
@@ -105,8 +101,7 @@ async function claudeScan(push: boolean) {
   claudeScanning = true;
   try {
     const snap = await claude.scan();
-    if (push) server.broadcastClaude({ type: "claudeSessions", ...snap });
-    core.publish("claude.sessions", snap);
+    if (push) core.publish("claude.sessions", snap);
   } catch (err) {
     console.error("[claude] tarama hatası:", (err as Error).message);
   } finally {
@@ -114,64 +109,6 @@ async function claudeScan(push: boolean) {
   }
 }
 
-const server = createServer(PORT, () => current, {
-  onCommand(cmd: ClientCommand, client: Client, reply: (msg: ServerMessage) => void) {
-    switch (cmd.type) {
-      case "run":
-        void runShortcut(cmd.action).then((result) => {
-          console.log(
-            `[run] ${cmd.action.kind} → ${result.ok ? "tamam" : `HATA: ${result.message}`}`
-          );
-          reply({ type: "runAck", id: cmd.id, ok: result.ok, message: result.message });
-        });
-        return;
-
-      case "claudeSubscribe":
-        client.claude = cmd.on;
-        if (cmd.on) {
-          // Isınmış anlık görüntüyü hemen ver, taze taramayı arkadan gönder
-          reply({ type: "claudeSessions", ...claude.snapshot });
-          reply({ type: "claudeUsage", usage: usage.wire });
-          void claudeScan(true);
-          void usage.refresh().then((u) => {
-            if (u) server.broadcastClaude({ type: "claudeUsage", usage: u });
-          });
-        } else {
-          claude.unsubscribeFeed(client);
-        }
-        return;
-
-      case "claudeFeed":
-        if (cmd.sessionId) void claude.subscribeFeed(client, cmd.sessionId, reply);
-        else claude.unsubscribeFeed(client);
-        return;
-
-      case "mailSubscribe":
-        client.mail = cmd.on;
-        if (cmd.on) {
-          reply({ type: "mail", mail: mail.wire });
-          void mail.refresh().then((m) => {
-            if (m) server.broadcastMail({ type: "mail", mail: m });
-          });
-        }
-        return;
-
-      default:
-        if (demo) {
-          demo.command(cmd);
-          void poll();
-        } else {
-          void live!.command(cmd).then(() => {
-            // AppleScript'in durumu yansıtması için kısa bir gecikmeyle yeniden yokla
-            setTimeout(() => void poll(), 400);
-          });
-        }
-    }
-  },
-  onClose(client: Client) {
-    claude.unsubscribeFeed(client);
-  },
-});
 
 const CORE_URL = coreSocketUrl(process.env.PANEL_URL ?? "http://127.0.0.1:3012");
 const CORE_TOKEN = process.env.DEVICE_TOKEN ?? "";
@@ -235,8 +172,8 @@ const core = new CoreLink(CORE_URL, CORE_TOKEN, process.env.DEVICE_NAME ?? "Mac 
     return { ok: false, message: `bilinmeyen iş: ${capability}.${action}` };
   },
 });
-/** Çekirdek üzerinden gelen akış aboneliği için sanal istemci kimliği */
-const coreFeedClient = { id: -1 } as unknown as Client;
+/** Akış aboneliği anahtarı: monitör abone kimliği olarak nesne kimliği kullanır */
+const coreFeedClient = { name: "core" };
 
 if (!CORE_TOKEN) {
   console.warn("[core] DEVICE_TOKEN yok — panelde Cihazlar sayfasından bir sağlayıcı ekleyip anahtarı .env dosyasına yazın");
@@ -260,9 +197,7 @@ setInterval(() => void poll(), POLL_MS);
 setInterval(() => {
   if (!wantsMail()) return;
   void mail.refresh().then((m) => {
-    if (!m) return;
-    server.broadcastMail({ type: "mail", mail: m });
-    core.publish("mail", m);
+    if (m) core.publish("mail", m);
   });
 }, MAIL_REFRESH_MS);
 
@@ -275,9 +210,7 @@ void usage.refresh(0);
 setInterval(() => {
   if (!wantsClaude()) return;
   void usage.refresh(USAGE_REFRESH_MS).then((u) => {
-    if (!u) return;
-    server.broadcastClaude({ type: "claudeUsage", usage: u });
-    core.publish("claude.usage", u);
+    if (u) core.publish("claude.usage", u);
   });
 }, 60_000);
 

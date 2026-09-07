@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import net from "node:net";
+import { getHub } from "@/lib/server/core/hub";
 import { requireAdmin } from "@/lib/server/admin/auth";
 import { db } from "@/lib/server/db";
 import { getBeszelMonitor } from "@/lib/server/monitors/beszel";
@@ -25,15 +26,18 @@ export async function GET(req: Request) {
   const s = await getAllSettings();
   let beszelUrl: URL | null = null;
   try { beszelUrl = new URL(s["beszel.url"]); } catch { /* geçersiz */ }
-  const [agent, beszel, counts] = await Promise.all([
-    probe("127.0.0.1", 17705),
+  const core = getHub().snapshot();
+  const [beszel, counts] = await Promise.all([
     beszelUrl ? probe(beszelUrl.hostname, Number(beszelUrl.port) || 80) : Promise.resolve(false),
     Promise.all([db().screen.count({ where: { enabled: true } }), db().shortcutItem.count(), db().noticeRule.count({ where: { enabled: true } })]),
   ]);
+  void probe;
   const infra = getBeszelMonitor().snapshot;
   const chat = getChatMonitor().snapshot;
   return NextResponse.json({
-    agent, beszel,
+    agent: core.providers.length > 0,
+    core: { providers: core.providers, surfaces: core.surfaces, capabilities: core.capabilities },
+    beszel,
     infra: { configured: infra.configured, systems: infra.systems.length, down: infra.systems.filter((x) => x.status === "down").length, error: infra.error },
     chat: {
       chatwoot: { configured: chat.chatwoot.configured, error: chat.chatwoot.error, items: chat.chatwoot.items.length },
