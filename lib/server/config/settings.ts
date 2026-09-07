@@ -31,6 +31,9 @@ export const SETTING_DEFAULTS = {
   "chat.noticeAssigned": true,
   "chat.noticeMentions": true,
   "chat.includeChannels": false,
+  "weather.lat": 0,
+  "weather.lon": 0,
+  "weather.place": "",
   "admin.setupDone": false,
   "admin.passwordHash": "",
 };

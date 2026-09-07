@@ -40,6 +40,9 @@ const VALIDATORS: Partial<Record<SettingKey, (v: unknown) => unknown>> = {
   "chat.noticeAssigned": (v) => (typeof v === "boolean" ? v : undefined),
   "chat.noticeMentions": (v) => (typeof v === "boolean" ? v : undefined),
   "chat.includeChannels": (v) => (typeof v === "boolean" ? v : undefined),
+  "weather.lat": (v) => (Number.isFinite(Number(v)) && Math.abs(Number(v)) <= 90 ? Number(v) : undefined),
+  "weather.lon": (v) => (Number.isFinite(Number(v)) && Math.abs(Number(v)) <= 180 ? Number(v) : undefined),
+  "weather.place": (v) => String(v).slice(0, 60),
 };
 
 /** Ayar güncelle — maskelenmiş gizli değer ("••••••") gönderilirse dokunulmaz */

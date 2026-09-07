@@ -194,8 +194,8 @@ body {
 
 /* Tek hedef cihaz: 1973×426 sabit. Responsive yok. (Yönetim paneli bu kuralın dışındadır.) */
 body.kiosk {
-  width: 1973px;
-  height: 426px;
+  width: 100vw;
+  height: 100dvh;
   overflow: hidden;
   color: var(--color-ink);
   font-family: var(--font-sans);
@@ -626,5 +626,13 @@ body.kiosk {
   .dock-indicator,
   .seconds-fill {
     transition: none;
+  }
+}
+
+/* Kilit ekranı dar yüzeyde alt alta dizilir; ayraç da yön değiştirir */
+@media (max-width: 1023px) {
+  .kiosk-lock-keys {
+    border-left: 0 !important;
+    border-top: 1px solid var(--hairline);
   }
 }

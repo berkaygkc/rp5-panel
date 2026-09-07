@@ -25,6 +25,7 @@ export default function SideRail({
   onSelect,
   onMenu,
   onLock,
+  className = "",
 }: {
   index: number;
   recents: string[];
@@ -32,6 +33,7 @@ export default function SideRail({
   onSelect: (i: number) => void;
   onMenu: () => void;
   onLock: () => void;
+  className?: string;
 }) {
   const SCREENS = useScreens();
   const now = useNow(1000);
@@ -49,7 +51,7 @@ export default function SideRail({
     "relative flex items-center justify-center transition-transform duration-100 [transition-timing-function:var(--ease-out-strong)] active:scale-90";
 
   return (
-    <nav className="flex h-full shrink-0 flex-col items-center px-3 py-3.5" style={{ width: RAIL_WIDTH }}>
+    <nav className={`h-full shrink-0 flex-col items-center px-3 py-3.5 ${className}`} style={{ width: RAIL_WIDTH }}>
       {/* Saat — imza öğe: sıkı tracking, tabular, altında dakikayı dolduran ibre */}
       <div className="w-full px-1 text-center leading-none">
         <div className="font-clock text-[54px] font-medium tabular-nums tracking-[-0.045em]">

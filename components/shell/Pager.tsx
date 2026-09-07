@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
-import { PAGE_WIDTH, SWIPE_THRESHOLD_RATIO } from "@/lib/config";
+import { SWIPE_THRESHOLD_RATIO } from "@/lib/config";
 import { project, rubberband, springTo, type SpringHandle } from "@/lib/motion/spring";
 import { useScreens } from "@/lib/config/ConfigContext";
 
@@ -31,11 +31,13 @@ export default function Pager({
   onIndexChange: (i: number) => void;
 }) {
   const SCREENS = useScreens();
-  const MIN_X = -(SCREENS.length - 1) * PAGE_WIDTH;
+  const viewportRef = useRef<HTMLDivElement>(null);
+  /** Sayfa genişliği ölçülür, varsayılmaz: aynı kod şeritte de telefonda da çalışır */
+  const pageW = useRef(0);
   const trackRef = useRef<HTMLDivElement>(null);
-  const xRef = useRef(-index * PAGE_WIDTH);
+  const xRef = useRef(0);
   const springRef = useRef<SpringHandle | null>(null);
-  const targetRef = useRef(-index * PAGE_WIDTH);
+  const targetRef = useRef(0);
   const gesture = useRef<Gesture | null>(null);
   const dragged = useRef(false);
   const reducedMotion = useRef(false);
@@ -50,6 +52,30 @@ export default function Pager({
   useEffect(() => {
     reducedMotion.current = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   }, []);
+
+  /* Genişlik değişince (ekran döndü, pencere yeniden boyutlandı) konum korunur */
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+    const measure = () => {
+      const w = el.getBoundingClientRect().width;
+      if (w < 1) return;
+      pageW.current = w;
+      const track = trackRef.current;
+      if (track) {
+        track.style.width = `${SCREENS.length * w}px`;
+        for (const child of Array.from(track.children)) (child as HTMLElement).style.width = `${w}px`;
+      }
+      // Ölçü değiştiyse mevcut sayfayı yeniden hizala
+      const target = -index * w;
+      targetRef.current = target;
+      setX(target);
+    };
+    measure();
+    const obs = new ResizeObserver(measure);
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [SCREENS.length, index]);
 
   const animateTo = useCallback((target: number, velocity = 0) => {
     const prev = springRef.current?.stop();
@@ -67,7 +93,7 @@ export default function Pager({
 
   // Dış kaynaklı index değişimi (rail, klavye): mevcut konumdan spring'le git
   useEffect(() => {
-    const target = -index * PAGE_WIDTH;
+    const target = -index * pageW.current;
     if (target !== targetRef.current) animateTo(target);
   }, [index, animateTo]);
 
@@ -111,9 +137,11 @@ export default function Pager({
     if (g.samples.length > 5) g.samples.shift();
 
     // 1:1 takip + kenarlarda rubber-band
+    const w = pageW.current || 1;
+    const minX = -(SCREENS.length - 1) * w;
     let x = g.baseX + dx;
-    if (x > 0) x = rubberband(x, PAGE_WIDTH);
-    else if (x < MIN_X) x = MIN_X + rubberband(x - MIN_X, PAGE_WIDTH);
+    if (x > 0) x = rubberband(x, w);
+    else if (x < minX) x = minX + rubberband(x - minX, w);
     setX(x);
   };
 
@@ -132,18 +160,19 @@ export default function Pager({
     const velocity = dt > 0 ? ((last.x - first.x) / dt) * 1000 : 0;
 
     // Momentum projeksiyonu hedef sayfayı seçer; tek jest en fazla bir sayfa atlar
+    const w = pageW.current || 1;
     const projected = xRef.current + project(velocity);
-    let target = Math.round(-projected / PAGE_WIDTH);
+    let target = Math.round(-projected / w);
     target = Math.max(index - 1, Math.min(index + 1, target));
     target = Math.max(0, Math.min(SCREENS.length - 1, target));
 
     // Projeksiyon yerinde sayıyorsa eşik kuralı: %20'den uzun sürükleme sayfa değiştirir
     const dx = e.clientX - g.startX;
-    if (target === index && Math.abs(dx) > PAGE_WIDTH * SWIPE_THRESHOLD_RATIO) {
+    if (target === index && Math.abs(dx) > w * SWIPE_THRESHOLD_RATIO) {
       target = Math.max(0, Math.min(SCREENS.length - 1, index + (dx < 0 ? 1 : -1)));
     }
 
-    animateTo(-target * PAGE_WIDTH, velocity);
+    animateTo(-target * w, velocity);
     if (target !== index) onIndexChange(target);
   };
 
@@ -157,6 +186,7 @@ export default function Pager({
 
   return (
     <div
+      ref={viewportRef}
       className="relative h-full flex-1 overflow-hidden"
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
@@ -167,13 +197,9 @@ export default function Pager({
       {/* transform'un tek sahibi ref'tir (spring/jest yazar) — React prop'u
           index değişiminde üzerine yazıp kare atlatmasın diye buraya konmaz.
           İlk render'da index 0 olduğundan başlangıç konumu zaten doğrudur. */}
-      <div
-        ref={trackRef}
-        className="flex h-full will-change-transform"
-        style={{ width: SCREENS.length * PAGE_WIDTH }}
-      >
+      <div ref={trackRef} className="flex h-full will-change-transform">
         {SCREENS.map((s) => (
-          <div key={s.id} style={{ width: PAGE_WIDTH }} className="h-full shrink-0">
+          <div key={s.id} className="h-full shrink-0">
             <s.component />
           </div>
         ))}

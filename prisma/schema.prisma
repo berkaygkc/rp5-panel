@@ -88,3 +88,16 @@ model Device {
   revoked      Boolean   @default(false)
   createdAt    DateTime  @default(now())
 }
+
+/// Widget ayarları: kullanıcının verdiği önem, izin verilen boyutlar ve sabit yuva.
+/// Satırı olmayan widget kayıt defterindeki varsayılanlarıyla çalışır.
+model WidgetSetting {
+  id       String  @id
+  enabled  Boolean @default(true)
+  priority Int
+  /// JSON dizi; boşsa widget'ın kendi boyut listesi geçerli
+  sizes    String  @default("[]")
+  pinCol   Int?
+  pinRow   Int?
+  pinSize  String?
+}

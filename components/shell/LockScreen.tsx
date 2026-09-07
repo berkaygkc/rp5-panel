@@ -103,7 +103,7 @@ export default function LockScreen({ onUnlock }: { onUnlock: () => void }) {
 
   return (
     <div
-      className="absolute inset-0 z-20 flex items-stretch overflow-hidden bg-night"
+      className="absolute inset-0 z-20 flex flex-col items-stretch overflow-hidden bg-night lg:flex-row"
       style={{
         transition: "opacity 450ms var(--ease-out-strong), transform 450ms var(--ease-out-strong)",
         ...(stage === "success"
@@ -115,20 +115,20 @@ export default function LockScreen({ onUnlock }: { onUnlock: () => void }) {
       <ThemeToggle className="absolute right-6 top-5 z-10" />
 
       {/* Sol: kimlik bloğu — sola yaslı, aradaki boşluğu aurora doldurur */}
-      <div className="relative flex flex-1 flex-col justify-center pl-24">
+      <div className="relative flex flex-1 flex-col justify-center px-8 pt-10 lg:pl-24 lg:pr-0 lg:pt-0">
         <div className="text-[16px] font-medium text-dim">
           {now
             ? now.toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" })
             : " "}
         </div>
-        <div className="mt-2 text-[124px] font-semibold leading-[0.86] tracking-[-0.05em] tabular-nums">
+        <div className="mt-2 text-[76px] font-semibold leading-[0.86] tracking-[-0.05em] tabular-nums sm:text-[104px] lg:text-[124px]">
           {now
             ? now.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })
             : "--:--"}
         </div>
 
         {/* Noktalar — yanlış girişte sarsılır, dolarken pop yapar */}
-        <div className="mt-10 flex items-center gap-5">
+        <div className="mt-7 flex items-center gap-5 lg:mt-10">
           <div
             key={stage === "error" ? "shake" : "still"}
             className={`flex gap-4 ${stage === "error" ? "animate-pin-shake" : ""}`}
@@ -149,7 +149,7 @@ export default function LockScreen({ onUnlock }: { onUnlock: () => void }) {
 
       {/* Sağ: tam boy numpad */}
       <div
-        className="relative flex w-[520px] shrink-0 flex-col py-6 pl-10 pr-14"
+        className="kiosk-lock-keys relative flex min-h-0 w-full flex-1 flex-col p-6 lg:w-[520px] lg:flex-none lg:py-6 lg:pl-10 lg:pr-14"
         style={{ borderLeft: "1px solid var(--hairline)" }}
       >
         <div className="grid min-h-0 flex-1 grid-cols-3 grid-rows-4 gap-2.5">

@@ -33,6 +33,7 @@
     "eslint-config-next": "16.3.4",
     "prisma": "^7.10.0",
     "tailwindcss": "^4",
+    "tsx": "^4.23.13",
     "typescript": "^5"
   },
   "description": "Touch-panel dashboard for a Raspberry Pi 5 ultra-wide display, fed live by a Mac agent: now playing, shortcuts, Claude Code sessions, mail, server monitoring and a web admin panel.",
