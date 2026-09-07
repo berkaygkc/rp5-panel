@@ -447,9 +447,6 @@ export default function InfraScreen() {
     <div
       key={view.level}
       className="animate-card-in flex h-full flex-col p-5"
-      style={{
-        background: `radial-gradient(900px 320px at 30% -12%, color-mix(in srgb, ${TINT} 9%, transparent), transparent 60%)`,
-      }}
     >
       {body}
     </div>

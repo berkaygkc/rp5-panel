@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertTriangle, Terminal, Wrench } from "lucide-react";
-import { Card } from "@/components/ui/Card";
+import { Module, Stage } from "@/components/ui/Stage";
 import { ScrollArea } from "@/components/ui/ScrollArea";
 import { useClaude } from "@/lib/data/useClaude";
 import { useNow } from "@/lib/data/useNow";
@@ -65,7 +65,8 @@ function LimitBar({ limit, now }: { limit: UsageLimit; now: number }) {
 function UsageCard({ usage, now }: { usage: Usage; now: number }) {
   const ready = usage.limits.length > 0;
   return (
-    <Card
+    <Module
+      className="pl-5"
       title="Plan Kullanımı"
       right={
         <span className="text-[11px] text-faint">
@@ -106,7 +107,7 @@ function UsageCard({ usage, now }: { usage: Usage; now: number }) {
           </div>
         </ScrollArea>
       )}
-    </Card>
+    </Module>
   );
 }
 
@@ -222,14 +223,11 @@ export default function ClaudeScreen() {
   const total = Math.max(1, data.sessions.length);
 
   return (
-    <div
-      className="grid h-full grid-cols-[400px_minmax(0,1fr)_390px] gap-4 p-5"
-      style={{
-        background: `radial-gradient(900px 320px at 30% -12%, color-mix(in srgb, ${TINT} 9%, transparent), transparent 60%)`,
-      }}
-    >
+    <Stage cols="400px minmax(0,1fr) 390px">
       {/* 1 — Oturumlar */}
-      <Card
+      <Module
+        divider={false}
+        className="pr-5"
         title="Oturumlar"
         right={
           stale ? (
@@ -298,10 +296,11 @@ export default function ClaudeScreen() {
             ))}
           </div>
         </ScrollArea>
-      </Card>
+      </Module>
 
       {/* 2 — Seçili oturumun akışı */}
-      <Card
+      <Module
+        className="px-5"
         title={selected ? selected.project : "Akış"}
         right={
           selected && (
@@ -365,10 +364,10 @@ export default function ClaudeScreen() {
             <div className="text-[13px] text-dim">Akışı görmek için bir oturum seç</div>
           </div>
         )}
-      </Card>
+      </Module>
 
       {/* 3 — Plan kullanımı */}
       <UsageCard usage={data.usage} now={now} />
-    </div>
+    </Stage>
   );
 }

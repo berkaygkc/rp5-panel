@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Inbox, Mail, Paperclip, Star } from "lucide-react";
-import { Card } from "@/components/ui/Card";
+import { Module, Stage } from "@/components/ui/Stage";
 import { ScrollArea } from "@/components/ui/ScrollArea";
 import { useMail } from "@/lib/data/useMail";
 import { useNow } from "@/lib/data/useNow";
@@ -79,14 +79,11 @@ export default function MailScreen() {
   );
 
   return (
-    <div
-      className="grid h-full grid-cols-[300px_minmax(0,1fr)_430px] gap-4 p-5"
-      style={{
-        background: `radial-gradient(900px 320px at 30% -12%, color-mix(in srgb, ${TINT} 9%, transparent), transparent 60%)`,
-      }}
-    >
+    <Stage cols="300px minmax(0,1fr) 430px">
       {/* 1 — Hesaplar */}
-      <Card
+      <Module
+        divider={false}
+        className="pr-5"
         title="Posta Kutuları"
         right={
           stale ? (
@@ -145,10 +142,11 @@ export default function MailScreen() {
             )}
           </div>
         </ScrollArea>
-      </Card>
+      </Module>
 
       {/* 2 — Mesaj listesi */}
-      <Card
+      <Module
+        className="px-5"
         title="Gelen Kutusu"
         right={
           <span className="flex items-center gap-1.5">
@@ -176,10 +174,11 @@ export default function MailScreen() {
             )}
           </div>
         </ScrollArea>
-      </Card>
+      </Module>
 
       {/* 3 — Seçili posta */}
-      <Card
+      <Module
+        className="pl-5"
         title={selected ? "Posta" : "Önizleme"}
         right={
           selected && (
@@ -234,7 +233,7 @@ export default function MailScreen() {
             )}
           </div>
         )}
-      </Card>
-    </div>
+      </Module>
+    </Stage>
   );
 }

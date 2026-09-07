@@ -2,7 +2,7 @@
 
 import { useState, type CSSProperties, type ReactNode } from "react";
 import { AtSign, Hash, MessageCircle, MessagesSquare, Paperclip, UserRound, Users, type LucideIcon } from "lucide-react";
-import { Card } from "@/components/ui/Card";
+import { Module, Stage } from "@/components/ui/Stage";
 import { DrillHeader } from "@/components/ui/DrillHeader";
 import { IconChip } from "@/components/ui/IconChip";
 import { ScrollArea } from "@/components/ui/ScrollArea";
@@ -217,11 +217,10 @@ function ThreadView({ item, now, onBack }: { item: ChatItem; now: number; onBack
   return (
     <div
       className="flex h-full flex-col p-5"
-      style={{ background: `radial-gradient(900px 320px at 30% -12%, color-mix(in srgb, ${s.tint} 9%, transparent), transparent 60%)` }}
     >
       <DrillHeader crumbs={[{ label: "Sohbet", onTap: onBack }, { label: item.title }]} onBack={onBack} right={<SourceChip source={item.source} />} />
-      <div className="grid min-h-0 flex-1 grid-cols-[300px_minmax(0,1fr)] gap-4">
-        <Card title="Bilgi" compact>
+      <div className="grid min-h-0 flex-1 grid-cols-[300px_minmax(0,1fr)]">
+        <Module title="Bilgi" divider={false} className="pr-5">
           <div className="mb-3 flex items-center gap-3">
             <Avatar name={item.title} tint={s.tint} size={44} />
             <span className="min-w-0">
@@ -246,8 +245,8 @@ function ThreadView({ item, now, onBack }: { item: ChatItem; now: number; onBack
             )}
           </dl>
           <p className="mt-auto break-all pt-3 text-[10.5px] leading-snug text-faint">{item.url.replace(/^https?:\/\//, "")}</p>
-        </Card>
-        <Card title="Mesajlar" compact className="min-h-0" right={thread && <span className="text-[11.5px] text-faint">son {thread.messages.length}</span>}>
+        </Module>
+        <Module title="Mesajlar" className="min-h-0 pl-5" right={thread && <span className="text-[11.5px] text-faint">son {thread.messages.length}</span>}>
           {error ? (
             <p className="text-[13px]" style={{ color: "var(--color-err)" }}>{error}</p>
           ) : !thread ? (
@@ -263,7 +262,7 @@ function ThreadView({ item, now, onBack }: { item: ChatItem; now: number; onBack
               </div>
             </ScrollArea>
           )}
-        </Card>
+        </Module>
       </div>
     </div>
   );
@@ -298,17 +297,14 @@ export default function ChatScreen() {
   const hot = items.filter((i) => i.unread > 0 || i.mentions > 0).length;
 
   return (
-    <div
-      className="grid h-full grid-cols-[300px_minmax(0,1fr)] gap-4 p-5"
-      style={{ background: `radial-gradient(900px 320px at 30% -12%, color-mix(in srgb, ${TINT} 9%, transparent), transparent 60%)` }}
-    >
-      <div className="flex min-h-0 flex-col gap-4">
+    <Stage cols="300px minmax(0,1fr)">
+      <div className="flex min-h-0 flex-col gap-4 pr-5">
         <SourceCard source="chatwoot" state={data.chatwoot} active={filter === "chatwoot"} now={now} onTap={() => setFilter(filter === "chatwoot" ? null : "chatwoot")} />
         <SourceCard source="mattermost" state={data.mattermost} active={filter === "mattermost"} now={now} onTap={() => setFilter(filter === "mattermost" ? null : "mattermost")} />
       </div>
-      <Card
+      <Module
         title="Dikkat gerektirenler"
-        className="min-h-0"
+        className="min-h-0 pl-5"
         right={
           <span className="flex items-center gap-2">
             {hot > 0 && (
@@ -336,7 +332,7 @@ export default function ChatScreen() {
             </div>
           </ScrollArea>
         )}
-      </Card>
-    </div>
+      </Module>
+    </Stage>
   );
 }

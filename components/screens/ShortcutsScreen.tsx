@@ -2,13 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { FolderGit2, Server, type LucideIcon } from "lucide-react";
-import { Card } from "@/components/ui/Card";
+import { Module, Stage, modulePad } from "@/components/ui/Stage";
 import { IconChip } from "@/components/ui/IconChip";
 import { runShortcutOnAgent } from "@/lib/data/runShortcut";
 import { useShortcuts } from "@/lib/data/useShortcuts";
 import type { ShortcutItem, ShortcutKind } from "@/lib/types/shortcuts";
-
-const TINT = "var(--color-orange)";
 
 const KIND_META: Record<ShortcutKind, { icon: LucideIcon; hue: string }> = {
   project: { icon: FolderGit2, hue: "var(--color-blue)" },
@@ -30,7 +28,7 @@ function ShortcutTile({
     <button
       onClick={onRun}
       disabled={running}
-      className={`flex h-[68px] min-w-0 items-center gap-3 rounded-2xl bg-raised px-4 text-left transition-[transform,background-color] duration-100 [transition-timing-function:var(--ease-out-strong)] active:scale-[0.97] active:bg-pressed ${
+      className={`surface flex h-[70px] min-w-0 items-center gap-3 rounded-[var(--r-md)] px-4 text-left transition-[transform,background-color] duration-100 [transition-timing-function:var(--ease-out-strong)] active:scale-[0.97] active:bg-pressed ${
         running ? "animate-soft-pulse" : ""
       }`}
     >
@@ -73,26 +71,23 @@ export default function ShortcutsScreen() {
   };
 
   return (
-    <div
-      className="relative grid h-full grid-cols-2 gap-4 p-5"
-      style={{
-        background: `radial-gradient(900px 320px at 30% -12%, color-mix(in srgb, ${TINT} 7%, transparent), transparent 60%)`,
-      }}
-    >
-      {groups.map((group) => (
-        <Card key={group.id} title={group.title}>
-          <div className="grid grid-cols-2 content-start gap-2.5">
-            {group.items.map((item) => (
-              <ShortcutTile
-                key={item.id}
-                item={item}
-                running={runningId === item.id}
-                onRun={() => run(item)}
-              />
-            ))}
-          </div>
-        </Card>
-      ))}
+    <div className="relative h-full">
+      <Stage cols={groups.map(() => "1fr").join(" ")}>
+        {groups.map((group, i) => (
+          <Module key={group.id} title={group.title} divider={i > 0} className={modulePad(i, groups.length)}>
+            <div className="grid grid-cols-2 content-start gap-3">
+              {group.items.map((item) => (
+                <ShortcutTile
+                  key={item.id}
+                  item={item}
+                  running={runningId === item.id}
+                  onRun={() => run(item)}
+                />
+              ))}
+            </div>
+          </Module>
+        ))}
+      </Stage>
 
       {toast && (
         <div
