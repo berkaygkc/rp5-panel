@@ -58,7 +58,7 @@ export interface WidgetProps {
   data: OsData;
 }
 
-export interface WidgetDef {
+export interface WidgetMeta {
   /** "media.nowPlaying" gibi; uygulama kimliğiyle başlar */
   id: string;
   appId: string;
@@ -74,6 +74,10 @@ export interface WidgetDef {
   urgency: (data: OsData) => number;
   /** Boşluk dolduran, veriye bağlı olmayan widget (saat, hava durumu) */
   filler?: boolean;
+}
+
+/** Ekranda çizilebilen widget: katalog tanımı + bileşeni */
+export interface WidgetDef extends WidgetMeta {
   component: ComponentType<WidgetProps>;
 }
 

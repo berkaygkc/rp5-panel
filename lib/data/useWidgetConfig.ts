@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { useKioskConfig } from "@/lib/config/ConfigContext";
-import { DEFAULT_PINS, WIDGETS } from "@/lib/os/registry";
+import { CATALOG, DEFAULT_PINS } from "@/lib/os/catalog";
 import type { WidgetConfig, WidgetSize } from "@/lib/os/types";
 
 /**
@@ -14,7 +14,7 @@ export function useWidgetConfig(): Record<string, WidgetConfig | undefined> {
   const stored = useKioskConfig().widgets;
   return useMemo(() => {
     const out: Record<string, WidgetConfig> = {};
-    for (const def of WIDGETS) {
+    for (const def of CATALOG) {
       const row = stored[def.id];
       const pin = DEFAULT_PINS[def.id];
       out[def.id] = {

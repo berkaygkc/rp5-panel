@@ -7,7 +7,7 @@
  * ya da hiç görünmez, sabitlenen yerinde kalır, boşluğu dolgular kapatır.
  */
 import { compose, hasPreemption, scoreOf } from "../lib/os/compose";
-import type { OsData, Placement, WidgetConfig, WidgetDef } from "../lib/os/types";
+import type { OsData, Placement, WidgetConfig, WidgetMeta } from "../lib/os/types";
 
 let failed = 0;
 function check(name: string, cond: boolean, detail?: unknown) {
@@ -19,8 +19,7 @@ function check(name: string, cond: boolean, detail?: unknown) {
 }
 
 const data = { now: Date.now() } as unknown as OsData;
-const noop = () => null;
-const W = (id: string, priority: number, urgency: number, sizes: WidgetDef["sizes"], filler = false): WidgetDef => ({
+const W = (id: string, priority: number, urgency: number, sizes: WidgetMeta["sizes"], filler = false): WidgetMeta => ({
   id,
   appId: id.split(".")[0],
   title: id,
@@ -28,7 +27,6 @@ const W = (id: string, priority: number, urgency: number, sizes: WidgetDef["size
   priority,
   urgency: () => urgency,
   filler,
-  component: noop as unknown as WidgetDef["component"],
 });
 const cfg = (over: Partial<WidgetConfig> & { id: string }): WidgetConfig => ({
   enabled: true, priority: 50, sizes: [], pinned: null, ...over,

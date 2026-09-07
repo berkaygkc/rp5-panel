@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
-  Bell, Cpu, ExternalLink, Gauge, Layers, LogOut, Mail, MessageSquare, Moon, RefreshCw,
+  Bell, Cpu, ExternalLink, LayoutGrid, Gauge, Layers, LogOut, Mail, MessageSquare, Moon, RefreshCw,
   Search, Server, Settings, ShieldCheck, Sparkles, Sun, Zap, type LucideIcon,
 } from "lucide-react";
 import { Button, Dot, Kbd, ToastHost, api, usePoll } from "@/components/admin/ui";
@@ -14,6 +14,7 @@ interface NavItem { href: string; label: string; icon: LucideIcon; count?: (s: A
 const NAV: Array<{ group: string; items: NavItem[] }> = [
   { group: "Genel", items: [{ href: "/admin", label: "Pano", icon: Gauge }] },
   { group: "Kiosk", items: [
+    { href: "/admin/widgets", label: "Widget’lar", icon: LayoutGrid },
     { href: "/admin/screens", label: "Ekranlar", icon: Layers, count: (s) => s.counts.screens },
     { href: "/admin/shortcuts", label: "Kısayollar", icon: Zap, count: (s) => s.counts.shortcuts },
   ]},

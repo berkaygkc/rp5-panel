@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { compose, hasPreemption, samePlacement } from "./compose";
-import type { GridSize, OsData, Placement, WidgetConfig, WidgetDef } from "./types";
+import type { GridSize, OsData, Placement, WidgetConfig, WidgetMeta } from "./types";
 
 /**
  * Sakin yeniden dizilim.
@@ -15,7 +15,7 @@ const DWELL_MS = 20_000;
 const TICK_MS = 2000;
 
 export function useComposition(
-  widgets: WidgetDef[],
+  widgets: WidgetMeta[],
   config: Record<string, WidgetConfig | undefined>,
   data: OsData,
   grid: GridSize

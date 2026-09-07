@@ -1,4 +1,4 @@
-import { SIZE_DIMS, sizeArea, type GridSize, type OsData, type Placement, type WidgetConfig, type WidgetDef } from "./types";
+import { SIZE_DIMS, sizeArea, type GridSize, type OsData, type Placement, type WidgetConfig, type WidgetMeta } from "./types";
 
 /**
  * Kompozisyon motoru — saf fonksiyon.
@@ -23,7 +23,7 @@ function areaCap(score: number): number {
   return 1;
 }
 
-export function scoreOf(def: WidgetDef, cfg: WidgetConfig | undefined, data: OsData): { score: number; urgency: number } {
+export function scoreOf(def: WidgetMeta, cfg: WidgetConfig | undefined, data: OsData): { score: number; urgency: number } {
   const urgency = Math.max(0, Math.min(100, def.urgency(data)));
   const priority = cfg?.priority ?? def.priority;
   return { score: WEIGHT_PRIORITY * priority + WEIGHT_URGENCY * urgency, urgency };
@@ -60,7 +60,7 @@ class Board {
 }
 
 export interface ComposeInput {
-  widgets: WidgetDef[];
+  widgets: WidgetMeta[];
   config: Record<string, WidgetConfig | undefined>;
   data: OsData;
   grid: GridSize;
@@ -131,7 +131,7 @@ export function samePlacement(a: Placement[], b: Placement[]): boolean {
 }
 
 /** Yerleşimde olmayan ama kritik puana ulaşmış bir widget var mı */
-export function hasPreemption(widgets: WidgetDef[], config: Record<string, WidgetConfig | undefined>, data: OsData, current: Placement[]): boolean {
+export function hasPreemption(widgets: WidgetMeta[], config: Record<string, WidgetConfig | undefined>, data: OsData, current: Placement[]): boolean {
   const shown = new Set(current.map((p) => p.widgetId));
   return widgets.some((def) => {
     if (shown.has(def.id) || config[def.id]?.enabled === false) return false;
