@@ -1,0 +1,23 @@
+# Çekirdeği bir sunucuya kurmak için:
+#   cp .env.local.example .env && docker compose up -d --build
+#   docker compose exec core npx prisma db push && docker compose exec core node prisma/seed.cjs
+#
+# Ters vekil (nginx, Caddy, Cloudflare) arkasına koyarken WebSocket yükseltmesine
+# izin verin: /ws yolu Upgrade ve Connection başlıklarını iletmelidir.
+services:
+  core:
+    build: .
+    container_name: rp5-core
+    restart: unless-stopped
+    ports:
+      - "3012:3012"
+    volumes:
+      - ./data:/data
+    environment:
+      PORT: 3012
+      PANEL_DATA_DIR: /data
+      NOTICE_TOKEN: ${NOTICE_TOKEN}
+      ADMIN_SESSION_SECRET: ${ADMIN_SESSION_SECRET}
+      BESZEL_URL: ${BESZEL_URL:-}
+      BESZEL_EMAIL: ${BESZEL_EMAIL:-}
+      BESZEL_PASSWORD: ${BESZEL_PASSWORD:-}

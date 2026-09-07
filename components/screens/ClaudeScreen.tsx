@@ -329,7 +329,7 @@ export default function ClaudeScreen() {
                   `${selected.prompts} prompt`,
                   `${fmtTokens(selected.tokens.output)} çıktı`,
                   `${fmtTokens(selected.tokens.cacheRead)} önbellek`,
-                  selected.costUsd !== null ? `~$${selected.costUsd.toFixed(0)}` : null,
+                  typeof selected.costUsd === "number" ? `~${selected.costUsd.toFixed(0)}` : null,
                   selected.linesAdded + selected.linesRemoved > 0
                     ? `+${selected.linesAdded} −${selected.linesRemoved}`
                     : null,

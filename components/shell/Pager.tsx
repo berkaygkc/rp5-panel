@@ -61,11 +61,6 @@ export default function Pager({
       const w = el.getBoundingClientRect().width;
       if (w < 1) return;
       pageW.current = w;
-      const track = trackRef.current;
-      if (track) {
-        track.style.width = `${SCREENS.length * w}px`;
-        for (const child of Array.from(track.children)) (child as HTMLElement).style.width = `${w}px`;
-      }
       // Ölçü değiştiyse mevcut sayfayı yeniden hizala
       const target = -index * w;
       targetRef.current = target;
@@ -197,9 +192,9 @@ export default function Pager({
       {/* transform'un tek sahibi ref'tir (spring/jest yazar) — React prop'u
           index değişiminde üzerine yazıp kare atlatmasın diye buraya konmaz.
           İlk render'da index 0 olduğundan başlangıç konumu zaten doğrudur. */}
-      <div ref={trackRef} className="flex h-full will-change-transform">
+      <div ref={trackRef} className="flex h-full w-full will-change-transform">
         {SCREENS.map((s) => (
-          <div key={s.id} className="h-full shrink-0">
+          <div key={s.id} className="h-full w-full shrink-0">
             <s.component />
           </div>
         ))}

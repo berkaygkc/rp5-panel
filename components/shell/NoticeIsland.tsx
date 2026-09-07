@@ -13,6 +13,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useNow } from "@/lib/data/useNow";
+import { getCore } from "@/lib/data/core";
 import { SEVERITY_RANK, type Notice } from "@/lib/notices/types";
 
 const KIND: Record<string, { icon: LucideIcon; tint: string }> = {
@@ -147,6 +148,30 @@ export default function NoticeIsland({
                 <span className="block truncate text-[11.5px] text-dim">{top.body}</span>
               )}
             </span>
+            {/* Bildirimin taşıdığı eylemler: dokunulunca çekirdek işi yapan cihaza yollar */}
+            {(top.actions ?? []).slice(0, 2).map((act) => (
+              <button
+                key={act.id}
+                onPointerDown={(e) => e.stopPropagation()}
+                onPointerUp={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void getCore()
+                    .intent(act.capability, act.action, act.args)
+                    .then((ack) => {
+                      if (ack.ok && act.dismiss !== false) onDismiss(top.id);
+                    });
+                }}
+                className="shrink-0 rounded-full px-3 py-1.5 text-[12px] font-semibold active:scale-95"
+                style={{
+                  background: `color-mix(in srgb, ${color} 20%, transparent)`,
+                  color,
+                  transition: "transform 120ms var(--ease-out-strong)",
+                }}
+              >
+                {act.label}
+              </button>
+            ))}
             {active.length > 1 && (
               <span className="shrink-0 rounded-full bg-raised px-2 py-0.5 text-[11px] font-semibold tabular-nums text-dim">
                 +{active.length - 1}

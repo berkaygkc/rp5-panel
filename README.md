@@ -1,6 +1,8 @@
 # RP5 Panel
 
-A touch-panel dashboard for a Raspberry Pi 5 driving an ultra-wide 11.9″ strip display, fed live by a small agent running on your Mac. Now playing, project and server shortcuts, Claude Code sessions, your mail inbox, server monitoring, a Dynamic-Island-style attention layer, and a web admin panel backed by SQLite.
+A small operating system for screens you glance at. A core runs the show, devices dial into it, and a dashboard composes itself out of widgets according to what is actually happening: now playing, Claude Code sessions waiting on you, unanswered chats, unread mail, servers that stopped answering.
+
+It was built for a Raspberry Pi 5 driving an ultra-wide 11.9″ strip, but nothing is tied to that screen. The same interface lays itself out on a desktop, a tablet or a phone, and the core can run on your Mac or on a server behind a domain.
 
 Built with Next.js 16, React 19, Tailwind v4 and Prisma. Only real data, only real actions: nothing on the panel is a mock.
 
@@ -10,15 +12,22 @@ Built with Next.js 16, React 19, Tailwind v4 and Prisma. Only real data, only re
 | --- | --- | --- |
 | ![Lock](docs/screenshots/lock.png) | ![Menu](docs/screenshots/menu.png) | ![Shortcuts](docs/screenshots/shortcuts.png) |
 
+The same dashboard, composed for two other surfaces:
+
+| Desktop | Phone |
+| --- | --- |
+| ![Desktop](docs/screenshots/desktop.png) | ![Phone](docs/screenshots/phone.png) |
+
 ## What it does
 
-- **Overview.** A high-craft analog clock, a now-playing card with scrubbing, transport and volume, a live Claude Code activity card, an unread-mail glimpse and a server-health complication. Four fixed slots; empty slots stay quiet tiles.
+- **A dashboard that composes itself.** Apps publish widgets in grid units. Each widget reports how urgent its own data is; that is blended with the importance you gave it, and the score buys floor space. A widget with nothing to say takes no room at all, the clock and the weather fill what is left, and they step aside when something happens. Layout changes are calm on purpose: a placement holds for twenty seconds unless something critical needs the room.
 - **Shortcuts.** One tap opens a project in VS Code or an SSH session in Termius or Terminal on the Mac. The toast shows the real result.
 - **Claude.** Claude Code sessions on the Mac: running, waiting for you, or closed. Tokens per session, today's usage, and a live event feed for the selected session.
 - **Mail.** Your Spark Desktop inbox, read directly from Spark's local database: accounts, unread counts, message list and preview.
 - **Infra.** Server grid → containers → container dashboard, powered by [Beszel](https://beszel.dev). CPU, memory and network sparklines, container logs and `docker inspect`, with honest failure states.
 - **Chat.** Chatwoot (customer conversations) and Mattermost (team chat) in one screen: the conversations assigned to you, who is still waiting for your reply and for how long, plus mentions, direct and group messages. Tap an item for the recent messages. Read-only.
-- **Attention layer.** A Dynamic Island above every screen. `info` and `attention` notices collapse after a few seconds; `urgent` notices persist across restarts until you dismiss them. Anything can post a notice: the Mac agent, built-in monitors, a CI webhook, an uptime service.
+- **Attention layer.** A Dynamic Island above every screen. `info` and `attention` notices collapse after a few seconds; `urgent` notices persist across restarts until you dismiss them. Anything can post a notice: the agent, built-in monitors, a CI webhook, an uptime service. A notice can carry actions, and tapping one routes the work back to the device that can do it.
+- **One interface, many surfaces.** The grid is derived from the screen: 4×2 on the strip, 4×3 on a desktop, a single scrolling column on a phone, where the rail lies down and becomes a bottom bar.
 - **Admin panel.** `/admin` from your computer: screens, shortcuts, notice rules, active notices, infra, mail, settings and security. Everything lives in SQLite; the kiosk pulls its configuration from the API, so nothing is hard-coded.
 - **Lock screen.** Server-validated PIN, rate limited, auto-lock after inactivity.
 
@@ -92,6 +101,7 @@ The Next.js dev server only serves LAN origins it knows about. Set `PANEL_LAN_SU
 | Shortcuts | Groups and buttons: project (VS Code) or SSH (Termius or Terminal), ordering, enable/disable |
 | Rules | Notice rules that set severity, kind and target screen; ordering; a live tester |
 | Active notices | What the island is showing right now; send a test notice; dismiss |
+| Widgets | Every widget grouped by app: enable, importance, allowed sizes, pinning, and a dashboard simulator |
 | Chat | Chatwoot and Mattermost credentials with connection tests, polling and notice behaviour, a live preview, and step-by-step docs for obtaining access tokens |
 | Infra | Beszel connection with a connection test, server display names, order and visibility, disk threshold, poll interval |
 | Mail | Excluded account patterns, notice and list limits |
@@ -104,6 +114,23 @@ The console is keyboard-first: `⌘K` opens a command palette for navigation and
 The kiosk refreshes its configuration every minute and whenever it regains focus. Secrets (the PIN, the Beszel password, the admin password hash) never leave the server; the PIN is validated only by `POST /api/unlock`.
 
 ![Admin shortcuts](docs/screenshots/admin-shortcuts.png)
+
+## Widgets
+
+Widgets are the unit of the dashboard. A widget declares which sizes it supports in grid cells, a default importance, and a function that looks at live data and returns how urgent it is right now.
+
+| Size | Cells | Typical use |
+| --- | --- | --- |
+| 1×1 | 1 | one number, one state |
+| 2×1 | 2 | a row of items |
+| 1×2 | 2 | a vertical stack |
+| 2×2 | 4 | the hero, with controls |
+
+The score is `0.4 × importance + 0.6 × urgency`. Above 68 a widget may take four cells, above 42 it may take two, below that it gets one. Zero urgency means it does not appear. Pinning a widget to a slot keeps it there, which is how the clock holds its corner.
+
+The engine is a pure function with a test suite (`npx tsx scripts/compose.test.ts`), which is what makes the admin console able to simulate a situation — a server down, Claude waiting, nothing at all — and show the exact layout the device would produce.
+
+Adding an app means writing widget components, adding an entry to `lib/os/catalog.ts` with its urgency rule, and wiring the component in `lib/os/registry.tsx`. The shell does not change.
 
 ## Notices API
 
@@ -147,6 +174,21 @@ The panel polls Chatwoot and Mattermost from the server, never from the kiosk, a
 - **Mattermost** uses a personal access token, or a username and password that the panel exchanges for a session token via `/api/v4/users/login` and renews when it expires. It reads your teams, channel memberships with unread and mention counters, direct and group channels, the last post of listed channels, and the last 40 posts of a selected channel.
 
 Enter both under Admin → Chat, which includes a connection test and the exact clicks needed to obtain each token.
+
+## Deploying the core
+
+The core is a Next.js app with a custom server, so HTTP and the `/ws` socket share one port. It runs anywhere Node runs.
+
+```bash
+cp .env.local.example .env      # NOTICE_TOKEN and ADMIN_SESSION_SECRET at minimum
+docker compose up -d --build
+docker compose exec core npx prisma db push
+docker compose exec core node prisma/seed.cjs
+```
+
+Put it behind a reverse proxy with TLS and make sure the proxy forwards WebSocket upgrades on `/ws`. Then open the console, add a device for your Mac, and paste the token into the agent's `.env` next to `PANEL_URL`. The agent dials out, so it works from a laptop on any network.
+
+To keep the agent running, copy `clients/mac-agent/deploy/com.rp5.agent.plist` into `~/Library/LaunchAgents`, fix the paths inside and `launchctl load` it.
 
 ## Configuration
 

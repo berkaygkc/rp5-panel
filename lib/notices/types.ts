@@ -5,6 +5,21 @@
 
 export type NoticeSeverity = "info" | "attention" | "urgent";
 
+/**
+ * Bildirimin taşıdığı eylem. Yüzeyde bir düğme olur; dokunulduğunda çekirdek
+ * bunu ilgili yeteneği sunan cihaza yönlendirir. Böylece "konteyneri yeniden
+ * başlat" ya da "projeyi aç" panelden değil, işi yapan cihazdan yürür.
+ */
+export interface NoticeAction {
+  id: string;
+  label: string;
+  capability: string;
+  action: string;
+  args?: Record<string, unknown>;
+  /** Eylem başarılıysa bildirimi kapat */
+  dismiss?: boolean;
+}
+
 export interface Notice {
   /** Kararlı kimlik — aynı olay iki kez çalmaz; durum değişince bu id ile temizlenir */
   id: string;
@@ -22,6 +37,8 @@ export interface Notice {
   expiresAt: number | null;
   /** Kurallar için serbest alanlar (hesap, repo, host …) */
   meta?: Record<string, string>;
+  /** Yüzeyde düğme olarak çıkan eylemler (en fazla ikisi gösterilir) */
+  actions?: NoticeAction[];
 }
 
 /** Üreticilerin gönderdiği (POST gövdesi) */
@@ -35,6 +52,7 @@ export interface NoticeInput {
   /** ms; verilmezse öneme göre varsayılan; urgent'ta yok sayılır (kalıcı) */
   ttlMs?: number;
   meta?: Record<string, string>;
+  actions?: NoticeAction[];
 }
 
 export type NoticeEvent =

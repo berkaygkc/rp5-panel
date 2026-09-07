@@ -3,7 +3,7 @@
 import { useCallback, useState } from "react";
 import { Panel, SaveBar, Segmented, Skeleton, api, loadSettings, saveSettings, usePoll, useToast } from "@/components/admin/ui";
 
-interface Cfg { theme: "dark" | "light"; lockMin: number; waitMin: number; recents: [string, string] }
+interface Cfg { theme: "dark" | "light"; lockMin: number; waitMin: number; recents: [string, string]; place: string; lat: number; lon: number }
 interface Screen { id: string; title: string; enabled: boolean }
 
 function Row({ title, desc, children }: { title: string; desc: string; children: React.ReactNode }) {
@@ -29,6 +29,9 @@ export default function SettingsPage() {
           (s["rail.defaultRecents"] as string[])?.[0] ?? "claude",
           (s["rail.defaultRecents"] as string[])?.[1] ?? "shortcuts",
         ] as [string, string],
+        place: String(s["weather.place"] ?? ""),
+        lat: Number(s["weather.lat"] ?? 0),
+        lon: Number(s["weather.lon"] ?? 0),
       })) as Promise<Cfg>,
     []
   );
@@ -52,6 +55,9 @@ export default function SettingsPage() {
         "lock.timeoutMs": draft.lockMin * 60_000,
         "claude.waitNoticeMs": draft.waitMin * 60_000,
         "rail.defaultRecents": draft.recents,
+        "weather.place": draft.place,
+        "weather.lat": draft.lat,
+        "weather.lon": draft.lon,
       });
       setDraft(null);
       refresh();
@@ -97,6 +103,18 @@ export default function SettingsPage() {
                     {(screens.data ?? []).map((s) => <option key={s.id} value={s.id}>{s.title}</option>)}
                   </select>
                 ))}
+              </Row>
+            </div>
+          </Panel>
+
+          <Panel title="Konum" desc="Hava durumu widget'ı için. Koordinat verilmezse widget hiç yerleşmez." flush>
+            <div className="a-rows">
+              <Row title="Yer adı" desc="Widget'ın başlığında görünür.">
+                <input value={cfg.place} onChange={(e) => set({ place: e.target.value })} style={{ width: 200 }} aria-label="Yer adı" />
+              </Row>
+              <Row title="Koordinat" desc="Enlem ve boylam. Haritadan alabilirsiniz; ondalık nokta ile.">
+                <input type="number" step="0.0001" value={cfg.lat} onChange={(e) => set({ lat: Number(e.target.value) })} style={{ width: 130 }} aria-label="Enlem" />
+                <input type="number" step="0.0001" value={cfg.lon} onChange={(e) => set({ lon: Number(e.target.value) })} style={{ width: 130 }} aria-label="Boylam" />
               </Row>
             </div>
           </Panel>
