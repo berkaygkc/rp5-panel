@@ -3,7 +3,7 @@ export const SCREEN_WIDTH = 1973;
 export const SCREEN_HEIGHT = 426;
 
 /** CarPlay tarzı sol rail'in genişliği (2 sütunlu, etiketli karolar). */
-export const RAIL_WIDTH = 208;
+export const RAIL_WIDTH = 176;
 
 /** Rail dışında kalan, kaydırılan ekran alanının genişliği. */
 export const PAGE_WIDTH = SCREEN_WIDTH - RAIL_WIDTH;

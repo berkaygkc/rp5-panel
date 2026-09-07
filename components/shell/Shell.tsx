@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { useKioskConfig, useScreens } from "@/lib/config/ConfigContext";
 import AmbientBackground from "./AmbientBackground";
 import AppMenu from "./AppMenu";
@@ -177,8 +177,14 @@ export default function Shell() {
     return () => window.removeEventListener("keydown", onKey);
   }, [locked, go]);
 
+  // Aktif ekranın kimlik rengi tüm kabuğa dağılır: aurora, dock göstergesi, saniye ibresi
+  const tint = SCREENS[index]?.tint ?? "var(--color-blue)";
+
   return (
-    <main className="relative h-full w-full overflow-hidden bg-night">
+    <main
+      className="relative h-full w-full overflow-hidden bg-night"
+      style={{ ["--screen-tint" as string]: tint } as CSSProperties}
+    >
       <AmbientBackground />
       {/* Panel, kilit açılırken "materialize" olur: ölçek + opaklık birlikte */}
       <div

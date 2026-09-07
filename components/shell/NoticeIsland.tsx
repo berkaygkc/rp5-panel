@@ -126,13 +126,9 @@ export default function NoticeIsland({
           }
           activate();
         }}
-        className="island-in pointer-events-auto flex h-12 w-max max-w-[640px] items-center gap-3 overflow-hidden rounded-full pl-2 pr-3"
+        className="island-in surface-shell pointer-events-auto flex h-12 w-max max-w-[640px] items-center gap-3 overflow-hidden rounded-full pl-2 pr-3"
         style={{
-          background: "var(--color-toast)",
-          boxShadow:
-            top.severity === "urgent"
-              ? `0 0 0 2px color-mix(in srgb, ${color} 45%, transparent), var(--toast-shadow)`
-              : "var(--toast-shadow)",
+          outline: top.severity === "urgent" ? `2px solid color-mix(in srgb, ${color} 45%, transparent)` : undefined,
           touchAction: "none",
         }}
       >

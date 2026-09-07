@@ -114,41 +114,41 @@ export default function LockScreen({ onUnlock }: { onUnlock: () => void }) {
       <AmbientBackground />
       <ThemeToggle className="absolute right-6 top-5 z-10" />
 
-      {/* Sol: dev saat + PIN durumu */}
-      <div className="relative flex flex-1 flex-col items-center justify-center">
-        <div className="text-[17px] font-medium text-dim">
+      {/* Sol: kimlik bloğu — sola yaslı, aradaki boşluğu aurora doldurur */}
+      <div className="relative flex flex-1 flex-col justify-center pl-24">
+        <div className="text-[16px] font-medium text-dim">
           {now
             ? now.toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" })
             : " "}
         </div>
-        <div className="mt-1 text-[108px] font-semibold leading-none tracking-[-0.03em] tabular-nums">
+        <div className="mt-2 text-[124px] font-semibold leading-[0.86] tracking-[-0.05em] tabular-nums">
           {now
             ? now.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })
             : "--:--"}
         </div>
 
         {/* Noktalar — yanlış girişte sarsılır, dolarken pop yapar */}
-        <div
-          key={stage === "error" ? "shake" : "still"}
-          className={`mt-9 flex gap-5 ${stage === "error" ? "animate-pin-shake" : ""}`}
-        >
-          {[0, 1, 2, 3].map((i) => (
-            <span
-              key={`${i}-${i < pin.length}`}
-              className={`h-3.5 w-3.5 rounded-full transition-colors duration-150 ${
-                i === pin.length - 1 && stage === "idle" ? "animate-dot-pop" : ""
-              }`}
-              style={dotStyle(i)}
-            />
-          ))}
-        </div>
-        <div className="mt-4 text-[13px] font-medium text-faint">
-          Kilidi açmak için PIN girin
+        <div className="mt-10 flex items-center gap-5">
+          <div
+            key={stage === "error" ? "shake" : "still"}
+            className={`flex gap-4 ${stage === "error" ? "animate-pin-shake" : ""}`}
+          >
+            {[0, 1, 2, 3].map((i) => (
+              <span
+                key={`${i}-${i < pin.length}`}
+                className={`h-3 w-3 rounded-full transition-colors duration-150 ${
+                  i === pin.length - 1 && stage === "idle" ? "animate-dot-pop" : ""
+                }`}
+                style={dotStyle(i)}
+              />
+            ))}
+          </div>
+          <div className="text-[13px] font-medium text-faint">Kilidi açmak için PIN girin</div>
         </div>
       </div>
 
       {/* Sağ: tam boy numpad */}
-      <div className="relative flex w-[560px] shrink-0 flex-col py-6 pr-12">
+      <div className="relative flex w-[520px] shrink-0 flex-col py-6 pr-14">
         <div className="grid min-h-0 flex-1 grid-cols-3 grid-rows-4 gap-2.5">
           {KEYS.map((k) => (
             <Key key={k.digit} onPress={() => press(k.digit)}>
