@@ -18,6 +18,7 @@ import { FrontmostMonitor } from "./frontmost.js";
 import { DemoPlayer } from "./sources/demo.js";
 import { runShortcut } from "./runner.js";
 import { createServer, type Client } from "./server.js";
+import { CoreLink, coreSocketUrl } from "./core.js";
 import type { ClientCommand, ServerMessage, WireMediaState } from "./protocol.js";
 
 const DEMO = process.argv.includes("--demo");
@@ -47,6 +48,15 @@ const frontmost = new FrontmostMonitor();
 // Bekleme bildirimi, ön plandaki VSCode çalışma alanındaki oturum için üretilmez
 claude.isInFront = (project) => frontmost.isWorkspaceInFront(project);
 setInterval(() => void frontmost.poll(), FRONTMOST_POLL_MS);
+
+/**
+ * Çekirdek artık işin merkezi. Ajan panele kendisi bağlanır ve durumunu oraya
+ * yayınlar; iş istekleri de oradan gelir. Eski doğrudan soket sunucusu, kiosk
+ * çekirdeğe taşınana kadar geçici olarak açık kalır.
+ */
+const coreWants = { claude: false, mail: false };
+const wantsClaude = () => coreWants.claude || server.hasClaudeSubscribers();
+const wantsMail = () => coreWants.mail || server.hasMailSubscribers();
 
 let current: WireMediaState | null = null;
 let lastSent: WireMediaState | null = null;
@@ -79,6 +89,7 @@ async function poll() {
     current = next;
     if (shouldBroadcast(next)) {
       server.broadcast(next);
+      core.publish("media", next);
       lastSent = next;
       lastSentAt = Date.now();
     }
@@ -95,6 +106,7 @@ async function claudeScan(push: boolean) {
   try {
     const snap = await claude.scan();
     if (push) server.broadcastClaude({ type: "claudeSessions", ...snap });
+    core.publish("claude.sessions", snap);
   } catch (err) {
     console.error("[claude] tarama hatası:", (err as Error).message);
   } finally {
@@ -161,8 +173,79 @@ const server = createServer(PORT, () => current, {
   },
 });
 
+const CORE_URL = coreSocketUrl(process.env.PANEL_URL ?? "http://127.0.0.1:3012");
+const CORE_TOKEN = process.env.DEVICE_TOKEN ?? "";
+const core = new CoreLink(CORE_URL, CORE_TOKEN, process.env.DEVICE_NAME ?? "Mac ajanı", ["media", "shortcuts", "claude", "mail"], {
+  onReady() {
+    // Bağlanır bağlanmaz elde ne varsa yayınla: yüzeyler boş ekran açmasın
+    if (current) core.publish("media", current);
+    core.publish("claude.sessions", claude.snapshot);
+    core.publish("claude.usage", usage.wire);
+    core.publish("mail", mail.wire);
+  },
+  async onInvoke(capability, action, args) {
+    if (capability === "shortcuts" && action === "run") {
+      const a = args as { action: Parameters<typeof runShortcut>[0] };
+      const result = await runShortcut(a.action);
+      console.log(`[run] ${a.action.kind} → ${result.ok ? "tamam" : `HATA: ${result.message}`}`);
+      return { ok: result.ok, message: result.message };
+    }
+    if (capability === "claude") {
+      if (action === "watch") {
+        coreWants.claude = Boolean((args as { on?: boolean })?.on);
+        if (coreWants.claude) {
+          core.publish("claude.sessions", claude.snapshot);
+          core.publish("claude.usage", usage.wire);
+          void claudeScan(true);
+          void usage.refresh().then((u) => { if (u) core.publish("claude.usage", u); });
+        }
+        return { ok: true };
+      }
+      if (action === "feed") {
+        const sessionId = (args as { sessionId?: string | null })?.sessionId ?? null;
+        if (sessionId) {
+          void claude.subscribeFeed(coreFeedClient, sessionId, (msg) => {
+            if (msg.type === "claudeFeed") core.publish("claude.feed", msg);
+          });
+        } else {
+          claude.unsubscribeFeed(coreFeedClient);
+        }
+        return { ok: true };
+      }
+    }
+    if (capability === "mail" && action === "watch") {
+      coreWants.mail = Boolean((args as { on?: boolean })?.on);
+      if (coreWants.mail) {
+        core.publish("mail", mail.wire);
+        void mail.refresh().then((m) => { if (m) core.publish("mail", m); });
+      }
+      return { ok: true };
+    }
+    if (capability === "media") {
+      const cmd = { type: action, ...(args as object) } as Parameters<LiveAgent["command"]>[0];
+      if (demo) {
+        demo.command(cmd);
+        void poll();
+      } else {
+        await live!.command(cmd);
+        setTimeout(() => void poll(), 400);
+      }
+      return { ok: true };
+    }
+    return { ok: false, message: `bilinmeyen iş: ${capability}.${action}` };
+  },
+});
+/** Çekirdek üzerinden gelen akış aboneliği için sanal istemci kimliği */
+const coreFeedClient = { id: -1 } as unknown as Client;
+
+if (!CORE_TOKEN) {
+  console.warn("[core] DEVICE_TOKEN yok — panelde Cihazlar sayfasından bir sağlayıcı ekleyip anahtarı .env dosyasına yazın");
+} else {
+  core.start();
+}
+
 console.log(
-  `[rp5-mac-agent] ${DEMO ? "DEMO modunda" : "canlı modda"} — ws://0.0.0.0:${PORT}`
+  `[rp5-mac-agent] ${DEMO ? "DEMO modunda" : "canlı modda"} — çekirdek: ${CORE_URL}`
 );
 if (!DEMO) {
   console.log(
@@ -175,9 +258,11 @@ setInterval(() => void poll(), POLL_MS);
 
 // Posta kutusu: abone varken periyodik tazele (salt okunur SQLite sorgusu)
 setInterval(() => {
-  if (!server.hasMailSubscribers()) return;
+  if (!wantsMail()) return;
   void mail.refresh().then((m) => {
-    if (m) server.broadcastMail({ type: "mail", mail: m });
+    if (!m) return;
+    server.broadcastMail({ type: "mail", mail: m });
+    core.publish("mail", m);
   });
 }, MAIL_REFRESH_MS);
 
@@ -188,14 +273,16 @@ setInterval(() => void refreshAgentConfig(), 60_000);
 // Plan kullanımı: açılışta bir kez ölç, sonra abone varken 5 dakikada bir tazele
 void usage.refresh(0);
 setInterval(() => {
-  if (!server.hasClaudeSubscribers()) return;
+  if (!wantsClaude()) return;
   void usage.refresh(USAGE_REFRESH_MS).then((u) => {
-    if (u) server.broadcastClaude({ type: "claudeUsage", usage: u });
+    if (!u) return;
+    server.broadcastClaude({ type: "claudeUsage", usage: u });
+    core.publish("claude.usage", u);
   });
 }, 60_000);
 
 // Claude Code: başlangıçta bir kez ısıt, sonra yalnızca abone varken tara
 void claudeScan(false);
 setInterval(() => {
-  if (server.hasClaudeSubscribers()) void claudeScan(true);
+  if (wantsClaude()) void claudeScan(true);
 }, CLAUDE_SCAN_MS);
