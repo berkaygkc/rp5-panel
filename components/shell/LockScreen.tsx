@@ -148,7 +148,10 @@ export default function LockScreen({ onUnlock }: { onUnlock: () => void }) {
       </div>
 
       {/* Sağ: tam boy numpad */}
-      <div className="relative flex w-[520px] shrink-0 flex-col py-6 pr-14">
+      <div
+        className="relative flex w-[520px] shrink-0 flex-col py-6 pl-10 pr-14"
+        style={{ borderLeft: "1px solid var(--hairline)" }}
+      >
         <div className="grid min-h-0 flex-1 grid-cols-3 grid-rows-4 gap-2.5">
           {KEYS.map((k) => (
             <Key key={k.digit} onPress={() => press(k.digit)}>

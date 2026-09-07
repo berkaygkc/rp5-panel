@@ -68,7 +68,7 @@ export function NowPlayingCard({
         {/* Kapak + parça */}
         <div className="flex items-center gap-4">
           <div
-            className="flex h-[92px] w-[92px] shrink-0 items-center justify-center overflow-hidden rounded-[16px]"
+            className="flex h-[104px] w-[104px] shrink-0 items-center justify-center overflow-hidden rounded-[var(--r-md)]"
             style={{
               background: `linear-gradient(135deg, ${track.artColors[0]}, ${track.artColors[1]})`,
               boxShadow: `0 14px 40px -14px ${track.artColors[1]}aa`,
@@ -82,10 +82,10 @@ export function NowPlayingCard({
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <div className="line-clamp-2 text-[20px] font-semibold leading-tight tracking-[-0.01em]">
+            <div className="line-clamp-2 text-[22px] font-semibold leading-tight tracking-[-0.02em]">
               {track.title}
             </div>
-            <div className="mt-0.5 truncate text-[14px] text-dim">
+            <div className="mt-1 truncate text-[14px] text-dim">
               {track.artist}
               {track.album ? ` · ${track.album}` : ""}
             </div>
