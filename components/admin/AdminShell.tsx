@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
-  Bell, ExternalLink, Gauge, Layers, LogOut, Mail, MessageSquare, Moon, RefreshCw,
+  Bell, Cpu, ExternalLink, Gauge, Layers, LogOut, Mail, MessageSquare, Moon, RefreshCw,
   Search, Server, Settings, ShieldCheck, Sparkles, Sun, Zap, type LucideIcon,
 } from "lucide-react";
 import { Button, Dot, Kbd, ToastHost, api, usePoll } from "@/components/admin/ui";
@@ -27,6 +27,7 @@ const NAV: Array<{ group: string; items: NavItem[] }> = [
     { href: "/admin/mail", label: "Posta", icon: Mail },
   ]},
   { group: "Sistem", items: [
+    { href: "/admin/devices", label: "Cihazlar", icon: Cpu },
     { href: "/admin/settings", label: "Ayarlar", icon: Settings },
     { href: "/admin/security", label: "Güvenlik", icon: ShieldCheck },
   ]},

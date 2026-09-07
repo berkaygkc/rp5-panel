@@ -73,3 +73,18 @@ model InfraSystemOverride {
   order       Int     @default(0)
   hidden      Boolean @default(false)
 }
+
+/// Çekirdeğe bağlanan cihazlar: sağlayıcılar (Mac ajanı) ve yüzeyler (Pi, telefon).
+/// Anahtar yalnızca özetiyle saklanır; ham değer bir kez gösterilir.
+model Device {
+  id           String    @id @default(cuid())
+  name         String
+  /// provider | surface
+  role         String
+  tokenHash    String    @unique
+  /// JSON dizi: sunulan yetenekler (sağlayıcılar için)
+  capabilities String    @default("[]")
+  lastSeenAt   DateTime?
+  revoked      Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+}

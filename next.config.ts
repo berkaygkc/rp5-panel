@@ -16,7 +16,7 @@ const nextConfig: NextConfig = {
   devIndicators: false,
   allowedDevOrigins: [...homeSubnet, "*.local"],
   // better-sqlite3 yerel modül: sunucu paketine dahil edilmesin, Node require ile yüklensin
-  serverExternalPackages: ["better-sqlite3", "@prisma/adapter-better-sqlite3", "@prisma/client"],
+  serverExternalPackages: ["better-sqlite3", "@prisma/adapter-better-sqlite3", "@prisma/client", "ws"],
 };
 
 export default nextConfig;
