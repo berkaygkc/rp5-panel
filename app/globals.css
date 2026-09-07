@@ -8,8 +8,8 @@
  */
 @theme inline {
   --font-sans: var(--font-inter), -apple-system, "SF Pro Display", "Helvetica Neue", sans-serif;
-  /* Rail saati: modern grotesk */
-  --font-clock: var(--font-grotesk), var(--font-inter), sans-serif;
+  /* Saat de gövdeyle aynı aile: enstrüman tipografisi tek sesle konuşur */
+  --font-clock: var(--font-inter), -apple-system, "SF Pro Display", sans-serif;
 }
 
 @theme {
@@ -60,15 +60,37 @@
  */
 :root {
   color-scheme: dark;
-  --card-top: rgba(255, 255, 255, 0.095);
-  --card-bottom: rgba(255, 255, 255, 0.04);
-  --card-highlight: rgba(255, 255, 255, 0.08);
-  --card-ring: rgba(255, 255, 255, 0.04);
-  --card-shadow: 0 0 0 0 transparent;
+
+  /*
+   * Malzeme ölçeği — üç düzlem:
+   *   alan   : zemin ve aurora (AmbientBackground)
+   *   sahne  : içerik. Yalnızca birincil modül yüzey taşır; ikincil olanlar
+   *            doğrudan alanın üstünde durur, saç teli çizgiyle ayrılır.
+   *   kabuk  : rail, ada, menü — gerçekten yükseltilmiş, gölgesi olan katman.
+   * Yükseklik arttıkça üst kenar aydınlanır (ışığı yakalayan makine yüzeyi).
+   */
+  --card-top: rgba(255, 255, 255, 0.075);
+  --card-bottom: rgba(255, 255, 255, 0.028);
+  --card-highlight: rgba(255, 255, 255, 0.1);
+  --card-ring: rgba(255, 255, 255, 0.05);
+  --card-shadow: 0 18px 40px -30px rgba(0, 0, 0, 0.9);
+
+  /* Yükseltilmiş kabuk (rail, ada, menü) */
+  --shell-top: rgba(255, 255, 255, 0.1);
+  --shell-bottom: rgba(255, 255, 255, 0.045);
+  --shell-ring: rgba(255, 255, 255, 0.08);
+  --shell-shadow: 0 24px 60px -34px rgba(0, 0, 0, 1);
+
+  /* Saç teli ayraç ve sessiz yüzey */
+  --hairline: rgba(255, 255, 255, 0.07);
+  --quiet-wash: rgba(255, 255, 255, 0.022);
+
   --toast-shadow: 0 8px 24px -12px rgba(0, 0, 0, 0.6);
   --blob-1: rgba(94, 92, 230, 0.2);
   --blob-2: rgba(10, 132, 255, 0.16);
   --blob-3: rgba(191, 90, 242, 0.14);
+  /* Aktif ekranın kimlik rengi — aurora ve seçim göstergesi bundan beslenir */
+  --screen-tint: #0a84ff;
   /* Saat kadranı */
   --dial-bezel-a: #464650;
   --dial-bezel-b: #121217;
@@ -123,11 +145,17 @@
   --color-err: #d93025;
   --color-track: rgba(0, 0, 0, 0.08);
   --color-toast: rgba(255, 255, 255, 0.96);
-  --card-top: rgba(255, 255, 255, 0.92);
-  --card-bottom: rgba(255, 255, 255, 0.7);
+  --card-top: rgba(255, 255, 255, 0.94);
+  --card-bottom: rgba(255, 255, 255, 0.74);
   --card-highlight: rgba(255, 255, 255, 1);
-  --card-ring: rgba(0, 0, 0, 0.05);
-  --card-shadow: 0 10px 28px -18px rgba(20, 24, 40, 0.35);
+  --card-ring: rgba(0, 0, 0, 0.06);
+  --card-shadow: 0 14px 34px -22px rgba(20, 24, 40, 0.4);
+  --shell-top: rgba(255, 255, 255, 0.98);
+  --shell-bottom: rgba(255, 255, 255, 0.86);
+  --shell-ring: rgba(0, 0, 0, 0.07);
+  --shell-shadow: 0 20px 48px -28px rgba(20, 24, 40, 0.45);
+  --hairline: rgba(0, 0, 0, 0.08);
+  --quiet-wash: rgba(0, 0, 0, 0.025);
   --toast-shadow: 0 10px 28px -14px rgba(20, 24, 40, 0.45);
   --blob-1: rgba(94, 92, 230, 0.14);
   --blob-2: rgba(10, 132, 255, 0.12);
@@ -479,5 +507,124 @@ body.kiosk {
       opacity: 0;
       transform: translate(-50%, 0);
     }
+  }
+}
+
+
+/* ============================================================================
+ * Enstrüman katmanı
+ * Şerit ekran bir ızgara değil, bir ufuk. Hiyerarşi kutu çizerek değil,
+ * yalnızca birincil modüle yüzey vererek kurulur; geri kalanı alanın üstünde
+ * saç teli çizgilerle ayrılır. Yükseklik arttıkça üst kenar aydınlanır.
+ * ========================================================================== */
+
+:root {
+  --r-lg: 24px;
+  --r-md: 16px;
+  --r-sm: 11px;
+  --pad-stage: 20px;
+  --gap-stage: 16px;
+}
+
+/* Birincil yüzey: ışığı üst kenarından yakalar */
+.surface {
+  background: linear-gradient(180deg, var(--card-top), var(--card-bottom));
+  box-shadow:
+    inset 0 1px 0 var(--card-highlight),
+    inset 0 0 0 1px var(--card-ring),
+    var(--card-shadow);
+}
+
+/* Kabuk yüzeyi: gerçekten yükseltilmiş, gölgesi hak edilmiş */
+.surface-shell {
+  background: linear-gradient(180deg, var(--shell-top), var(--shell-bottom));
+  box-shadow:
+    inset 0 1px 0 var(--card-highlight),
+    inset 0 0 0 1px var(--shell-ring),
+    var(--shell-shadow);
+}
+
+/* Sessiz yüzey: yalnızca hafif bir yıkama, kenar yok */
+.surface-quiet {
+  background: var(--quiet-wash);
+}
+
+/* Modüller arası dikey saç teli — kutu çizmeden ayırır */
+.divide-hairline > * + * {
+  border-left: 1px solid var(--hairline);
+}
+
+/* Ekran değişince modüller sırayla belirir: 40 ms'lik kademe, yalnızca
+ * transform/opacity. Etkileşimi bloklamaz. */
+@keyframes stage-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.stage-in > * {
+  animation: stage-in 340ms var(--ease-out-strong) both;
+}
+.stage-in > *:nth-child(1) { animation-delay: 0ms; }
+.stage-in > *:nth-child(2) { animation-delay: 40ms; }
+.stage-in > *:nth-child(3) { animation-delay: 80ms; }
+.stage-in > *:nth-child(4) { animation-delay: 120ms; }
+.stage-in > *:nth-child(5) { animation-delay: 160ms; }
+
+/* Aurora: aktif ekranın kimlik rengiyle boyanan geniş yıkama.
+ * Renk gezinmede bir kez değişir; sürekli hareket eden blob'lar nötr kalır. */
+.ambient-wash {
+  position: absolute;
+  inset: -20% -10% auto -10%;
+  height: 150%;
+  background: radial-gradient(
+    62% 78% at 22% 0%,
+    color-mix(in srgb, var(--screen-tint) 20%, transparent),
+    transparent 68%
+  );
+  opacity: 0.9;
+}
+
+/* Rail saatinin saniye ibresi: dakika boyunca dolan saç teli */
+.seconds-track {
+  position: relative;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--color-track);
+  overflow: hidden;
+}
+.seconds-fill {
+  position: absolute;
+  inset: 0;
+  border-radius: 2px;
+  background: var(--screen-tint);
+  transform-origin: left center;
+  transition: transform 950ms linear;
+}
+
+/* Dock: seçim göstergesi satırlar arasında kayar (konum değil transform) */
+.dock-indicator {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  height: var(--dock-slot);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--screen-tint) 22%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--screen-tint) 30%, transparent);
+  transition: transform 380ms var(--ease-out-strong), background-color 240ms ease;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stage-in > * {
+    animation: none;
+  }
+  .dock-indicator,
+  .seconds-fill {
+    transition: none;
   }
 }

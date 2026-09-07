@@ -1,16 +1,10 @@
 import type { Metadata } from "next";
-import { Inter, Space_Grotesk } from "next/font/google";
+import { Inter } from "next/font/google";
 import "../globals.css";
 
 const inter = Inter({
   subsets: ["latin", "latin-ext"],
   variable: "--font-inter",
-});
-
-/* Rail saati için modern, karakterli bir grotesk */
-const spaceGrotesk = Space_Grotesk({
-  subsets: ["latin", "latin-ext"],
-  variable: "--font-grotesk",
 });
 
 export const metadata: Metadata = {
@@ -30,7 +24,7 @@ export default function RootLayout({
       lang="tr"
       translate="no"
       suppressHydrationWarning
-      className={`${inter.variable} ${spaceGrotesk.variable}`}
+      className={inter.variable}
     >
       <head>
         {/* Kaydedilmiş tema, ilk boyamadan önce uygulanır (flaş yok) */}
