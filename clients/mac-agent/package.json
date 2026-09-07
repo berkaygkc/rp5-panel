@@ -1,0 +1,23 @@
+{
+  "name": "rp5-mac-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "RP5 Panel için Mac medya ajanı: çalan parçayı yayınlar, panel komutlarını uygular",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "demo": "tsx src/index.ts --demo",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/ws": "^8.5.10",
+    "tsx": "^4.19.0",
+    "typescript": "^5"
+  }
+}

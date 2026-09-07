@@ -1,26 +1,44 @@
 {
-  "name": "rp5-panel-test",
+  "name": "rp5-panel",
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 3012",
     "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
+    "start": "next start -p 3012",
+    "lint": "eslint",
+    "db:push": "prisma db push",
+    "db:seed": "node prisma/seed.cjs",
+    "db:studio": "prisma studio",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
+    "@prisma/adapter-better-sqlite3": "^7.10.0",
+    "@prisma/client": "^7.10.0",
+    "better-sqlite3": "^12.11.1",
+    "lucide-react": "^1.39.0",
     "next": "16.3.4",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.4",
+    "prisma": "^7.10.0",
     "tailwindcss": "^4",
     "typescript": "^5"
-  }
+  },
+  "description": "Touch-panel dashboard for a Raspberry Pi 5 ultra-wide display, fed live by a Mac agent: now playing, shortcuts, Claude Code sessions, mail, server monitoring and a web admin panel.",
+  "license": "MIT",
+  "author": "Berkay Gökçe",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/berkaygkc/rp5-panel.git"
+  },
+  "homepage": "https://github.com/berkaygkc/rp5-panel#readme"
 }

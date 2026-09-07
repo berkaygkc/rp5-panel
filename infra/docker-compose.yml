@@ -1,0 +1,42 @@
+# RP5 altyapı izleme — panelin yanında, aynı Mac'te.
+#
+#   docker compose up -d                 → yalnızca Beszel (hub)
+#   docker compose --profile kuma up -d  → Beszel + Uptime Kuma
+#
+# Beszel hub:   http://localhost:8090   (ilk açılışta yönetici hesabı oluşturulur)
+# Uptime Kuma:  http://localhost:3021   (3001 bu makinede dolu)
+#
+# Dışarı açma: cloudflared tünelinde Cloudflare panelinden bir hostname ekleyin
+#   beszel.<alan>  → http://localhost:8090
+#   kuma.<alan>    → http://localhost:3021
+# Beszel agent'ları hub'a WebSocket ile (agent → hub) bağlanır; hub'ın tünel
+# adresi yeter, sunucularda port açmak gerekmez.
+#
+# Canlıya alırken: bu compose olduğu gibi bir VPS'e taşınır, agent'larda
+# yalnızca HUB_URL değişir.
+
+services:
+  beszel:
+    image: henrygd/beszel:latest
+    container_name: rp5-beszel
+    restart: unless-stopped
+    ports:
+      - "8090:8090"
+    volumes:
+      - ./beszel_data:/beszel_data
+    environment:
+      # Bildirim bağlantıları için genel adres — tünel hostname'i belli olunca doldurun
+      APP_URL: ${BESZEL_APP_URL:-http://localhost:8090}
+      TZ: Europe/Istanbul
+
+  uptime-kuma:
+    image: louislam/uptime-kuma:2
+    container_name: rp5-uptime-kuma
+    restart: unless-stopped
+    profiles: ["kuma"]
+    ports:
+      - "3021:3001"
+    volumes:
+      - ./kuma_data:/app/data
+    environment:
+      TZ: Europe/Istanbul

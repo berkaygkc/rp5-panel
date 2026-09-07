@@ -39,3 +39,22 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# çalışma zamanı verisi (kalıcı bildirimler)
+.data/
+
+# izleme servislerinin verisi (infra/docker-compose.yml)
+infra/beszel_data/
+infra/kuma_data/
+
+# Prisma üretilen istemci
+lib/generated/
+
+# AI tooling (local skills, lockfile)
+.claude/
+.agents/
+skills-lock.json
+
+# local databases and screenshots scratch
+*.db
+*.db-journal

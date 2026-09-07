@@ -1,0 +1,75 @@
+// RP5 Panel — yönetim veritabanı (SQLite, .data/panel.db)
+// Koda gömülü olan her şey burada: ekranlar, kısayollar, bildirim kuralları, ayarlar.
+
+datasource db {
+  provider = "sqlite"
+}
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../lib/generated/prisma"
+}
+
+/// Anahtar-değer ayarlar; değer JSON kodludur (string/number/boolean/array/object)
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+/// Kiosk ekranları: bileşen kodda, sıra/başlık/renk/görünürlük burada
+model Screen {
+  id      String  @id
+  title   String
+  tint    String
+  order   Int
+  enabled Boolean @default(true)
+}
+
+model ShortcutGroup {
+  id    String         @id @default(cuid())
+  title String
+  order Int
+  items ShortcutItem[]
+}
+
+model ShortcutItem {
+  id       String        @id @default(cuid())
+  groupId  String
+  group    ShortcutGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  label    String
+  sublabel String?
+  feedback String
+  /// project | ssh
+  kind     String
+  path     String?
+  host     String?
+  port     Int?
+  user     String?
+  /// termius | terminal
+  via      String?
+  order    Int
+  enabled  Boolean       @default(true)
+}
+
+/// Bildirim önem kuralları: alan + düzenli ifade → önem/tür/ekran ataması
+model NoticeRule {
+  id          String  @id @default(cuid())
+  name        String
+  enabled     Boolean @default(true)
+  order       Int
+  /// text (başlık+gövde) | title | body | kind | account
+  field       String
+  pattern     String
+  setSeverity String?
+  setKind     String?
+  setScreen   String?
+}
+
+/// Beszel sistemleri için görünüm ayarları (ad, sıra, gizli)
+model InfraSystemOverride {
+  beszelId    String  @id
+  displayName String?
+  order       Int     @default(0)
+  hidden      Boolean @default(false)
+}
