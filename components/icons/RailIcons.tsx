@@ -134,3 +134,16 @@ export function ServerIcon({ active, size = 30 }: RailIconProps) {
     </IconSvg>
   );
 }
+
+/** Sohbet — konuşma balonu ve üç nokta; aktifleşince yaylanarak büyür */
+export function ChatIcon({ active, size = 30 }: RailIconProps) {
+  return (
+    <IconSvg size={size} active={active} anim="animate-icon-pop">
+      <path
+        d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12c0 1.6.376 3.112 1.043 4.453.178.356.237.763.134 1.148l-.595 2.226a1.3 1.3 0 0 0 1.591 1.591l2.226-.595a1.634 1.634 0 0 1 1.149.133A9.958 9.958 0 0 0 12 22Z"
+        opacity=".5"
+      />
+      <path d="M7.825 13.1a1.1 1.1 0 1 1 0-2.2 1.1 1.1 0 0 1 0 2.2Zm4.175 0a1.1 1.1 0 1 1 0-2.2 1.1 1.1 0 0 1 0 2.2Zm4.175 0a1.1 1.1 0 1 1 0-2.2 1.1 1.1 0 0 1 0 2.2Z" />
+    </IconSvg>
+  );
+}

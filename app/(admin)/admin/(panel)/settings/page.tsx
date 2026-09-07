@@ -1,76 +1,122 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Card, Field, PageHeader, SaveBar, Segmented, api, loadSettings, saveSettings, useToast } from "@/components/admin/ui";
+import { useCallback, useState } from "react";
+import { Panel, SaveBar, Segmented, Skeleton, api, loadSettings, saveSettings, usePoll, useToast } from "@/components/admin/ui";
 
 interface Cfg { theme: "dark" | "light"; lockMin: number; waitMin: number; recents: [string, string] }
 interface Screen { id: string; title: string; enabled: boolean }
 
-export default function SettingsPage() {
-  const [cfg, setCfg] = useState<Cfg | null>(null);
-  const [saved, setSaved] = useState("");
-  const [screens, setScreens] = useState<Screen[]>([]);
-  const [busy, setBusy] = useState(false);
-  const { toast, show } = useToast();
+function Row({ title, desc, children }: { title: string; desc: string; children: React.ReactNode }) {
+  return (
+    <div className="a-row">
+      <div className="a-row-text">
+        <div className="a-row-title">{title}</div>
+        <div className="a-row-desc">{desc}</div>
+      </div>
+      <div className="a-row-control">{children}</div>
+    </div>
+  );
+}
 
-  useEffect(() => {
-    void loadSettings().then((s) => {
-      const r = Array.isArray(s["rail.defaultRecents"]) ? (s["rail.defaultRecents"] as string[]) : [];
-      const c: Cfg = {
+export default function SettingsPage() {
+  const load = useCallback(
+    () =>
+      loadSettings().then((s) => ({
         theme: s["theme.default"] === "light" ? "light" : "dark",
         lockMin: Math.round(Number(s["lock.timeoutMs"] ?? 7_200_000) / 60_000),
         waitMin: Math.round(Number(s["claude.waitNoticeMs"] ?? 180_000) / 60_000),
-        recents: [r[0] ?? "claude", r[1] ?? "shortcuts"],
-      };
-      setCfg(c); setSaved(JSON.stringify(c));
-    }).catch((e: Error) => show(e.message, "danger"));
-    void api<{ screens: Screen[] }>("/api/admin/screens").then((r) => setScreens(r.screens.filter((x) => x.enabled && x.id !== "overview"))).catch(() => null);
-  }, [show]);
+        recents: [
+          (s["rail.defaultRecents"] as string[])?.[0] ?? "claude",
+          (s["rail.defaultRecents"] as string[])?.[1] ?? "shortcuts",
+        ] as [string, string],
+      })) as Promise<Cfg>,
+    []
+  );
+  const loadScreens = useCallback(() => api<{ screens: Screen[] }>("/api/admin/screens").then((r) => r.screens.filter((x) => x.enabled && x.id !== "overview")), []);
+  const { data, loading, refresh } = usePoll(load);
+  const screens = usePoll(loadScreens);
+  const [draft, setDraft] = useState<Cfg | null>(null);
+  const [busy, setBusy] = useState(false);
+  const toast = useToast();
 
-  const save = async () => {
-    if (!cfg) return;
+  const cfg = draft ?? data;
+  const dirty = draft !== null && JSON.stringify(draft) !== JSON.stringify(data);
+  const set = (p: Partial<Cfg>) => cfg && setDraft({ ...cfg, ...p });
+
+  const save = useCallback(async () => {
+    if (!draft) return;
     setBusy(true);
     try {
-      await saveSettings({ "theme.default": cfg.theme, "lock.timeoutMs": cfg.lockMin * 60_000, "claude.waitNoticeMs": cfg.waitMin * 60_000, "rail.defaultRecents": cfg.recents });
-      setSaved(JSON.stringify(cfg));
-      show("Ayarlar kaydedildi");
-    } catch (e) { show((e as Error).message, "danger"); } finally { setBusy(false); }
-  };
+      await saveSettings({
+        "theme.default": draft.theme,
+        "lock.timeoutMs": draft.lockMin * 60_000,
+        "claude.waitNoticeMs": draft.waitMin * 60_000,
+        "rail.defaultRecents": draft.recents,
+      });
+      setDraft(null);
+      refresh();
+      toast.ok("Ayarlar kaydedildi");
+    } catch (e) {
+      toast.fail((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }, [draft, refresh, toast]);
 
   return (
     <>
-      <PageHeader title="Ayarlar" sub="Kiosk davranışı. PIN ve yönetici parolası Güvenlik sayfasındadır." right={<SaveBar dirty={cfg !== null && JSON.stringify(cfg) !== saved} busy={busy} onSave={() => void save()} />} />
-      {cfg && (
-        <div className="grid grid-cols-2 gap-5">
-          <Card title="Görünüm">
-            <div className="flex flex-col gap-4">
-              <div>
-                <div className="mb-1 text-[12.5px] font-medium" style={{ color: "var(--admin-muted)" }}>Varsayılan tema</div>
-                <Segmented value={cfg.theme} onChange={(theme) => setCfg({ ...cfg, theme })} options={[{ value: "dark", label: "Koyu" }, { value: "light", label: "Açık" }]} />
-                <p className="mt-1 text-[12px]" style={{ color: "var(--admin-faint)" }}>Kiosk’ta elle seçilen tema cihazda kalır; bu yalnızca ilk açılışı belirler.</p>
-              </div>
-              <div>
-                <div className="mb-1 text-[12.5px] font-medium" style={{ color: "var(--admin-muted)" }}>Rail’deki başlangıç yuvaları</div>
-                <div className="grid grid-cols-2 gap-2">
-                  {[0, 1].map((i) => (
-                    <select key={i} value={cfg.recents[i]} onChange={(e) => { const recents: [string, string] = [...cfg.recents] as [string, string]; recents[i] = e.target.value; setCfg({ ...cfg, recents }); }}>
-                      {screens.map((s) => <option key={s.id} value={s.id}>{s.title}</option>)}
-                    </select>
-                  ))}
-                </div>
-                <p className="mt-1 text-[12px]" style={{ color: "var(--admin-faint)" }}>Kiosk ilk açıldığında sağ raildeki iki yuva; sonra en son kullanılan ekranlar geçer.</p>
-              </div>
+      <header className="a-head">
+        <div>
+          <h1 className="a-title">Ayarlar</h1>
+          <p className="a-sub">Kiosk’un davranışı. Kilit PIN’i ve yönetici parolası Güvenlik sayfasındadır.</p>
+        </div>
+      </header>
+
+      {loading || !cfg ? (
+        <Panel><div className="flex flex-col gap-3"><Skeleton /><Skeleton /><Skeleton /></div></Panel>
+      ) : (
+        <div className="flex flex-col gap-4">
+          <Panel title="Görünüm" flush>
+            <div className="a-rows">
+              <Row title="Varsayılan tema" desc="Kiosk’ta elle seçilen tema o cihazda kalır; bu yalnızca ilk açılışı belirler.">
+                <Segmented value={cfg.theme} onChange={(theme) => set({ theme })} options={[{ value: "dark", label: "Koyu" }, { value: "light", label: "Açık" }]} />
+              </Row>
+              <Row title="Rail’in başlangıç yuvaları" desc="Kiosk ilk açıldığında sağ rail’de duran iki ekran. Sonrasında en son kullanılanlar buraya geçer.">
+                {[0, 1].map((i) => (
+                  <select
+                    key={i}
+                    aria-label={`${i + 1}. yuva`}
+                    value={cfg.recents[i]}
+                    onChange={(e) => {
+                      const recents: [string, string] = [...cfg.recents] as [string, string];
+                      recents[i] = e.target.value;
+                      set({ recents });
+                    }}
+                    style={{ width: 160 }}
+                  >
+                    {(screens.data ?? []).map((s) => <option key={s.id} value={s.id}>{s.title}</option>)}
+                  </select>
+                ))}
+              </Row>
             </div>
-          </Card>
-          <Card title="Süreler">
-            <div className="flex flex-col gap-3">
-              <Field label="Kilit süresi (dk)" hint="bu kadar dokunulmazsa kiosk kilitlenir; en az 1"><input type="number" min={1} value={cfg.lockMin} onChange={(e) => setCfg({ ...cfg, lockMin: Number(e.target.value) })} /></Field>
-              <Field label="Claude bekleme uyarısı (dk)" hint="bir oturum bu kadar süredir sizi bekliyorsa bildirim düşer; en az 1"><input type="number" min={1} value={cfg.waitMin} onChange={(e) => setCfg({ ...cfg, waitMin: Number(e.target.value) })} /></Field>
+          </Panel>
+
+          <Panel title="Süreler" flush>
+            <div className="a-rows">
+              <Row title="Otomatik kilit" desc="Bu kadar süre hiç dokunulmazsa kiosk kilitlenir ve PIN ister.">
+                <input type="number" min={1} value={cfg.lockMin} onChange={(e) => set({ lockMin: Number(e.target.value) })} style={{ width: 90 }} aria-label="Kilit süresi, dakika" />
+                <span className="a-muted">dakika</span>
+              </Row>
+              <Row title="Claude bekleme uyarısı" desc="Bir Claude Code oturumu bu kadar süredir sizden yanıt bekliyorsa dikkat bildirimi düşer.">
+                <input type="number" min={1} value={cfg.waitMin} onChange={(e) => set({ waitMin: Number(e.target.value) })} style={{ width: 90 }} aria-label="Bekleme eşiği, dakika" />
+                <span className="a-muted">dakika</span>
+              </Row>
             </div>
-          </Card>
+          </Panel>
         </div>
       )}
-      {toast}
+
+      <SaveBar dirty={dirty} busy={busy} onSave={() => void save()} onReset={() => setDraft(null)} />
     </>
   );
 }

@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/server/admin/auth";
 import { db } from "@/lib/server/db";
 import { getBeszelMonitor } from "@/lib/server/monitors/beszel";
 import { getNoticeStore } from "@/lib/server/notices/store";
+import { getChatMonitor } from "@/lib/server/monitors/chat";
 import { getAllSettings } from "@/lib/server/config/settings";
 
 export const dynamic = "force-dynamic";
@@ -30,9 +31,15 @@ export async function GET(req: Request) {
     Promise.all([db().screen.count({ where: { enabled: true } }), db().shortcutItem.count(), db().noticeRule.count({ where: { enabled: true } })]),
   ]);
   const infra = getBeszelMonitor().snapshot;
+  const chat = getChatMonitor().snapshot;
   return NextResponse.json({
     agent, beszel,
     infra: { configured: infra.configured, systems: infra.systems.length, down: infra.systems.filter((x) => x.status === "down").length, error: infra.error },
+    chat: {
+      chatwoot: { configured: chat.chatwoot.configured, error: chat.chatwoot.error, items: chat.chatwoot.items.length },
+      mattermost: { configured: chat.mattermost.configured, error: chat.mattermost.error, items: chat.mattermost.items.length },
+      updatedAt: chat.updatedAt,
+    },
     notices: getNoticeStore().snapshot().length,
     counts: { screens: counts[0], shortcuts: counts[1], rules: counts[2] },
     node: process.version, uptimeSec: Math.round(process.uptime()),

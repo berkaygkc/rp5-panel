@@ -17,6 +17,7 @@ Built with Next.js 16, React 19, Tailwind v4 and Prisma. Only real data, only re
 - **Claude.** Claude Code sessions on the Mac: running, waiting for you, or closed. Tokens per session, today's usage, and a live event feed for the selected session.
 - **Mail.** Your Spark Desktop inbox, read directly from Spark's local database: accounts, unread counts, message list and preview.
 - **Infra.** Server grid → containers → container dashboard, powered by [Beszel](https://beszel.dev). CPU, memory and network sparklines, container logs and `docker inspect`, with honest failure states.
+- **Chat.** Chatwoot (customer conversations) and Mattermost (team chat) in one screen: the conversations assigned to you, who is still waiting for your reply and for how long, plus mentions, direct and group messages. Tap an item for the recent messages. Read-only.
 - **Attention layer.** A Dynamic Island above every screen. `info` and `attention` notices collapse after a few seconds; `urgent` notices persist across restarts until you dismiss them. Anything can post a notice: the Mac agent, built-in monitors, a CI webhook, an uptime service.
 - **Admin panel.** `/admin` from your computer: screens, shortcuts, notice rules, active notices, infra, mail, settings and security. Everything lives in SQLite; the kiosk pulls its configuration from the API, so nothing is hard-coded.
 - **Lock screen.** Server-validated PIN, rate limited, auto-lock after inactivity.
@@ -91,10 +92,13 @@ The Next.js dev server only serves LAN origins it knows about. Set `PANEL_LAN_SU
 | Shortcuts | Groups and buttons: project (VS Code) or SSH (Termius or Terminal), ordering, enable/disable |
 | Rules | Notice rules that set severity, kind and target screen; ordering; a live tester |
 | Active notices | What the island is showing right now; send a test notice; dismiss |
+| Chat | Chatwoot and Mattermost credentials with connection tests, polling and notice behaviour, a live preview, and step-by-step docs for obtaining access tokens |
 | Infra | Beszel connection with a connection test, server display names, order and visibility, disk threshold, poll interval |
 | Mail | Excluded account patterns, notice and list limits |
 | Settings | Default theme, lock timeout, rail start slots, Claude waiting threshold |
 | Security | Kiosk PIN and admin password |
+
+The console is keyboard-first: `⌘K` opens a command palette for navigation and quick actions, `⌘S` saves whatever page you are editing, and `Esc` closes drawers. A status strip across the top carries the live state of the agent, the Beszel hub and the chat sources on every page, and the dashboard opens with a to-scale diagram of the kiosk itself. Colour is reserved for state and for kiosk screen tints; the chrome is achromatic.
 
 The kiosk refreshes its configuration every minute and whenever it regains focus. Secrets (the PIN, the Beszel password, the admin password hash) never leave the server; the PIN is validated only by `POST /api/unlock`.
 
@@ -120,7 +124,7 @@ curl -X POST http://localhost:3012/api/notices \
 
 Fields: `id`, `title`, optional `body`, `kind` (`claude`, `mail`, `ci`, `server`, `system`, or anything), `severity` (`info`, `attention`, `urgent`), `screen` to open on tap, `ttlMs`, and free-form `meta` used by rules. Urgent notices are persisted to disk and ignore `ttlMs`.
 
-Built-in producers: the Mac agent (Claude sessions waiting for input, new mail, shortcut failures) and the panel's own Beszel monitor (server down, container unhealthy, disk above threshold).
+Built-in producers: the Mac agent (Claude sessions waiting for input, new mail, shortcut failures), the panel's Beszel monitor (server down, container unhealthy, disk above threshold) and the chat monitor (unread customer message in a conversation assigned to you, Mattermost mentions and direct messages). A notice you dismiss on the kiosk does not fire again unless its content changes.
 
 ## Server monitoring
 
@@ -133,6 +137,15 @@ docker compose --profile kuma up -d   # plus Uptime Kuma on http://localhost:302
 ```
 
 Create a Beszel user for the panel, assign your systems to it, and enter the credentials under Admin → Infra. Beszel agents connect outward to the hub, so servers do not need open ports. Container logs and `docker inspect` come from the hub's container endpoints.
+
+## Chat sources
+
+The panel polls Chatwoot and Mattermost from the server, never from the kiosk, and only reads.
+
+- **Chatwoot** uses a user access token (Profile Settings → Access Token) against the Application API, and reads only the open conversations assigned to you (`assignee_type=me`): their unread counts and waiting times, unread mention notifications, inbox names, and the messages of a selected conversation. The unassigned queue is never queried. The account id is taken from the token's first account unless you set it.
+- **Mattermost** uses a personal access token, or a username and password that the panel exchanges for a session token via `/api/v4/users/login` and renews when it expires. It reads your teams, channel memberships with unread and mention counters, direct and group channels, the last post of listed channels, and the last 40 posts of a selected channel.
+
+Enter both under Admin → Chat, which includes a connection test and the exact clicks needed to obtain each token.
 
 ## Configuration
 
@@ -155,9 +168,10 @@ app/(kiosk)            Kiosk root layout and page (fixed 1973×426 body)
 app/(admin)/admin      Admin panel: setup, login, and the management pages
 app/api                config, unlock, notices, agent config, admin API
 components/shell       Pager, side rail, app menu, lock screen, notice island
-components/screens     Overview, Shortcuts, Claude, Mail, Infra
+components/screens     Overview, Shortcuts, Claude, Mail, Infra, Chat
 components/admin       Admin shell and UI primitives
-lib/server             Prisma client, settings cache, notice store and rules, Beszel monitor, admin auth
+lib/server             Prisma client, settings cache, notice store and rules, Beszel and chat monitors, admin auth
+lib/server/chat        Chatwoot and Mattermost API clients
 lib/data               Kiosk data hooks (media, Claude, mail, infra, shortcuts)
 lib/motion             Hand-rolled spring physics and gesture helpers
 clients/mac-agent      The Mac agent (WebSocket server, AppleScript, MediaRemote, Spark, Claude Code)

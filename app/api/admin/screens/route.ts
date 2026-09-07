@@ -3,7 +3,7 @@ import { requireAdmin } from "@/lib/server/admin/auth";
 import { db } from "@/lib/server/db";
 
 export const dynamic = "force-dynamic";
-const KNOWN = ["overview", "shortcuts", "claude", "mail", "infra"];
+const KNOWN = ["overview", "shortcuts", "claude", "mail", "infra", "chat"];
 
 export async function GET(req: Request) {
   const denied = requireAdmin(req); if (denied) return denied;

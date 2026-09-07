@@ -1,8 +1,11 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Plus } from "lucide-react";
-import { Badge, Button, Card, ConfirmButton, Empty, Field, PageHeader, ReorderButtons, Toggle, api, move, useToast } from "@/components/admin/ui";
+import {
+  Button, ConfirmButton, Drawer, Empty, Field, Panel, Reorder, Skeleton, Switch, Tag,
+  api, move, usePoll, useToast,
+} from "@/components/admin/ui";
 
 interface Item {
   id: string; groupId: string; label: string; sublabel: string | null; feedback: string;
@@ -10,181 +13,217 @@ interface Item {
   order: number; enabled: boolean;
 }
 interface Group { id: string; title: string; order: number; items: Item[] }
-type Draft = Omit<Item, "id" | "order" | "groupId"> & { id?: string };
+type Draft = Omit<Item, "order" | "groupId" | "id"> & { id?: string };
 
 const EMPTY: Draft = { label: "", sublabel: null, feedback: "", kind: "project", path: "", host: null, port: 22, user: null, via: null, enabled: true };
-
-function target(i: Item) {
-  if (i.kind === "project") return i.path ?? "";
-  return `${i.user ? `${i.user}@` : ""}${i.host ?? ""}${i.port && i.port !== 22 ? `:${i.port}` : ""}`;
-}
+const target = (i: Item) => (i.kind === "project" ? (i.path ?? "") : `${i.user ? `${i.user}@` : ""}${i.host ?? ""}${i.port && i.port !== 22 ? `:${i.port}` : ""}`);
+const opensWith = (i: Item) => (i.kind === "ssh" ? (i.via === "terminal" ? "Terminal" : "Termius") : "VS Code");
 
 export default function ShortcutsPage() {
-  const [groups, setGroups] = useState<Group[] | null>(null);
-  const [editing, setEditing] = useState<{ groupId: string; draft: Draft } | null>(null);
+  const load = useCallback(() => api<{ groups: Group[] }>("/api/admin/shortcuts/groups").then((r) => r.groups), []);
+  const { data, loading, refresh } = usePoll(load);
+  const [editor, setEditor] = useState<{ key: string; groupId: string; groupTitle: string; draft: Draft } | null>(null);
+  const [open, setOpen] = useState(false);
   const [newGroup, setNewGroup] = useState("");
-  const { toast, show } = useToast();
+  const [local, setLocal] = useState<Group[] | null>(null);
+  const seq = useRef(0);
+  const toast = useToast();
 
-  const reload = useCallback(
-    () => api<{ groups: Group[] }>("/api/admin/shortcuts/groups").then((r) => setGroups(r.groups)),
-    []
+  const groups = local ?? data ?? [];
+
+  const run = useCallback(
+    async (fn: () => Promise<unknown>, ok: string) => {
+      try {
+        await fn();
+        setLocal(null);
+        refresh();
+        toast.ok(ok);
+        return true;
+      } catch (e) {
+        setLocal(null);
+        refresh();
+        toast.fail((e as Error).message);
+        return false;
+      }
+    },
+    [refresh, toast]
   );
-  useEffect(() => { void reload().catch((e: Error) => show(e.message, "danger")); }, [reload, show]);
-
-  /** Mutasyon + yeniden yükleme + bildirim; başarı durumunu döndürür */
-  const run = async (fn: () => Promise<unknown>, ok: string) => {
-    try {
-      await fn();
-      await reload();
-      show(ok);
-      return true;
-    } catch (e) {
-      show((e as Error).message, "danger");
-      return false;
-    }
-  };
 
   const addGroup = async () => {
     if (await run(() => api("/api/admin/shortcuts/groups", { method: "POST", json: { title: newGroup } }), "Grup eklendi")) setNewGroup("");
   };
   const renameGroup = (g: Group, title: string) => {
-    if (!groups || !title.trim() || title.trim() === g.title) return;
+    if (!title.trim() || title.trim() === g.title) return;
     void run(() => api("/api/admin/shortcuts/groups", { method: "PUT", json: { groups: groups.map((x) => ({ id: x.id, title: x.id === g.id ? title.trim() : x.title })) } }), "Grup adı güncellendi");
   };
   const moveGroup = (i: number, dir: -1 | 1) => {
-    if (!groups) return;
     const next = move(groups, i, i + dir);
     if (next === groups) return;
-    setGroups(next);
+    setLocal(next);
     void run(() => api("/api/admin/shortcuts/groups", { method: "PUT", json: { groups: next.map((x) => ({ id: x.id })) } }), "Grup sırası güncellendi");
   };
-  const deleteGroup = (id: string) => run(() => api("/api/admin/shortcuts/groups", { method: "DELETE", json: { id } }), "Grup silindi");
   const moveItem = (g: Group, i: number, dir: -1 | 1) => {
     const items = move(g.items, i, i + dir);
     if (items === g.items) return;
-    setGroups((gs) => gs && gs.map((x) => (x.id === g.id ? { ...x, items } : x)));
+    setLocal(groups.map((x) => (x.id === g.id ? { ...x, items } : x)));
     void run(() => api("/api/admin/shortcuts/items", { method: "PUT", json: { reorder: items.map((it) => ({ id: it.id, groupId: g.id })) } }), "Sıra güncellendi");
   };
-  const toggleItem = (it: Item, enabled: boolean) => run(() => api("/api/admin/shortcuts/items", { method: "PUT", json: { ...it, enabled } }), enabled ? "Kısayol kiosk'ta gösteriliyor" : "Kısayol kiosk'tan gizlendi");
-  const deleteItem = (id: string) => run(() => api("/api/admin/shortcuts/items", { method: "DELETE", json: { id } }), "Kısayol silindi");
-  const saveDraft = async (groupId: string, d: Draft) => {
-    if (await run(() => api("/api/admin/shortcuts/items", { method: d.id ? "PUT" : "POST", json: { ...d, groupId } }), d.id ? "Kısayol güncellendi" : "Kısayol eklendi")) setEditing(null);
+  const toggleItem = (it: Item, enabled: boolean) => {
+    setLocal(groups.map((g) => ({ ...g, items: g.items.map((x) => (x.id === it.id ? { ...x, enabled } : x)) })));
+    void run(() => api("/api/admin/shortcuts/items", { method: "PUT", json: { ...it, enabled } }), enabled ? "Kısayol kiosk'ta görünüyor" : "Kısayol kiosk'tan gizlendi");
+  };
+  const saveDraft = async (d: Draft, groupId: string) => {
+    if (await run(() => api("/api/admin/shortcuts/items", { method: d.id ? "PUT" : "POST", json: { ...d, groupId } }), d.id ? "Kısayol güncellendi" : "Kısayol eklendi")) setOpen(false);
+  };
+  const edit = (g: Group, item?: Item) => {
+    seq.current += 1;
+    setEditor({ key: `${g.id}:${item?.id ?? "yeni"}:${seq.current}`, groupId: g.id, groupTitle: g.title, draft: item ? { ...item } : EMPTY });
+    setOpen(true);
   };
 
   return (
     <>
-      <PageHeader title="Kısayollar" sub="Kiosk'un Kısayollar ekranındaki gruplar ve düğmeler. Projeler VS Code'da, sunucular Termius ya da Terminal'de açılır." />
-      <div className="flex flex-col gap-5">
-        {groups?.map((g, gi) => (
-          <Card key={g.id}>
-            <div className="mb-3 flex items-center gap-3">
-              <input key={g.title} defaultValue={g.title} onBlur={(e) => renameGroup(g, e.target.value)} style={{ width: 260, fontWeight: 600 }} aria-label="Grup adı" />
-              <span className="text-[12.5px]" style={{ color: "var(--admin-faint)" }}>{g.items.length} kısayol</span>
-              <div className="ml-auto flex items-center gap-2">
-                <ReorderButtons canUp={gi > 0} canDown={gi < groups.length - 1} onUp={() => moveGroup(gi, -1)} onDown={() => moveGroup(gi, 1)} />
-                <Button size="sm" onClick={() => setEditing({ groupId: g.id, draft: EMPTY })}><Plus size={14} /> Kısayol ekle</Button>
-                <ConfirmButton label="Grubu sil" confirmLabel={`${g.items.length} kısayolla birlikte sil`} onConfirm={() => void deleteGroup(g.id)} />
-              </div>
-            </div>
+      <header className="a-head">
+        <div>
+          <h1 className="a-title">Kısayollar</h1>
+          <p className="a-sub">
+            Kiosk’un Kısayollar ekranındaki gruplar ve düğmeler. Bir düğmeye dokunmak Mac’te projeyi VS Code’da, sunucuyu Termius ya da Terminal’de açar.
+          </p>
+        </div>
+      </header>
+
+      {loading && <Panel><div className="flex flex-col gap-3"><Skeleton /><Skeleton /><Skeleton /></div></Panel>}
+
+      <div className="flex flex-col gap-4">
+        {groups.map((g, gi) => (
+          <Panel
+            key={g.id}
+            flush
+            actions={
+              <>
+                <Reorder canUp={gi > 0} canDown={gi < groups.length - 1} onUp={() => moveGroup(gi, -1)} onDown={() => moveGroup(gi, 1)} />
+                <Button size="sm" onClick={() => edit(g)}><Plus size={14} /> Kısayol ekle</Button>
+                <ConfirmButton label="Grubu sil" confirm={`${g.items.length} kısayolla birlikte sil`} onConfirm={() => void run(() => api("/api/admin/shortcuts/groups", { method: "DELETE", json: { id: g.id } }), "Grup silindi")} />
+              </>
+            }
+            titleNode={
+              <input
+                key={g.title}
+                className="a-inline-input"
+                defaultValue={g.title}
+                onBlur={(e) => renameGroup(g, e.target.value)}
+                aria-label="Grup adı"
+              />
+            }
+          >
             {g.items.length === 0 ? (
-              editing?.groupId !== g.id && <Empty>Bu grupta kısayol yok. “Kısayol ekle” ile başlayın.</Empty>
+              <Empty>Bu grupta kısayol yok.</Empty>
             ) : (
-              <table>
+              <table className="a-tbl">
                 <thead>
                   <tr>
-                    <th style={{ width: 60 }}>Açık</th>
+                    <th style={{ width: 66 }}>Açık</th>
                     <th>Etiket</th>
-                    <th style={{ width: 90 }}>Tür</th>
+                    <th style={{ width: 92 }}>Tür</th>
                     <th>Hedef</th>
-                    <th style={{ width: 100 }}>Açılış</th>
-                    <th style={{ width: 230 }}></th>
+                    <th style={{ width: 104 }}>Açılış</th>
+                    <th style={{ width: 210 }} />
                   </tr>
                 </thead>
                 <tbody>
                   {g.items.map((it, ii) => (
-                    <Fragment key={it.id}>
-                      <tr style={{ opacity: it.enabled ? 1 : 0.55 }}>
-                        <td><Toggle checked={it.enabled} onChange={(v) => void toggleItem(it, v)} /></td>
-                        <td>
-                          <div className="font-medium">{it.label}</div>
-                          {it.sublabel && <div className="text-[12px]" style={{ color: "var(--admin-muted)" }}>{it.sublabel}</div>}
-                        </td>
-                        <td><Badge tone={it.kind === "ssh" ? "accent" : "neutral"}>{it.kind === "ssh" ? "SSH" : "Proje"}</Badge></td>
-                        <td><code className="mono">{target(it)}</code></td>
-                        <td className="text-[12.5px]" style={{ color: "var(--admin-muted)" }}>{it.kind === "ssh" ? (it.via === "terminal" ? "Terminal" : "Termius") : "VS Code"}</td>
-                        <td>
-                          <div className="flex items-center justify-end gap-1">
-                            <ReorderButtons canUp={ii > 0} canDown={ii < g.items.length - 1} onUp={() => moveItem(g, ii, -1)} onDown={() => moveItem(g, ii, 1)} />
-                            <Button size="sm" variant="ghost" onClick={() => setEditing({ groupId: g.id, draft: { ...it } })}>Düzenle</Button>
-                            <ConfirmButton onConfirm={() => void deleteItem(it.id)} />
-                          </div>
-                        </td>
-                      </tr>
-                      {editing?.groupId === g.id && editing.draft.id === it.id && (
-                        <tr><td colSpan={6} style={{ padding: "4px 0 12px" }}><ItemEditor draft={editing.draft} onSave={(d) => void saveDraft(g.id, d)} onCancel={() => setEditing(null)} /></td></tr>
-                      )}
-                    </Fragment>
+                    <tr key={it.id} data-off={!it.enabled}>
+                      <td><Switch checked={it.enabled} onChange={(v) => toggleItem(it, v)} label={undefined} /></td>
+                      <td>
+                        <div style={{ fontWeight: 500 }}>{it.label}</div>
+                        {it.sublabel && <div className="a-muted text-[12px]">{it.sublabel}</div>}
+                      </td>
+                      <td><Tag tone={it.kind === "ssh" ? "solid" : undefined}>{it.kind === "ssh" ? "SSH" : "Proje"}</Tag></td>
+                      <td><code className="a-muted">{target(it)}</code></td>
+                      <td className="a-muted">{opensWith(it)}</td>
+                      <td>
+                        <div className="a-tbl-actions">
+                          <Reorder canUp={ii > 0} canDown={ii < g.items.length - 1} onUp={() => moveItem(g, ii, -1)} onDown={() => moveItem(g, ii, 1)} />
+                          <Button size="sm" variant="ghost" onClick={() => edit(g, it)}>Düzenle</Button>
+                          <ConfirmButton onConfirm={() => void run(() => api("/api/admin/shortcuts/items", { method: "DELETE", json: { id: it.id } }), "Kısayol silindi")} />
+                        </div>
+                      </td>
+                    </tr>
                   ))}
                 </tbody>
               </table>
             )}
-            {editing?.groupId === g.id && !editing.draft.id && (
-              <div className="mt-3"><ItemEditor draft={editing.draft} onSave={(d) => void saveDraft(g.id, d)} onCancel={() => setEditing(null)} /></div>
-            )}
-          </Card>
+          </Panel>
         ))}
-        {groups && groups.length === 0 && <Card><Empty>Henüz grup yok. Aşağıdan ilk grubu ekleyin.</Empty></Card>}
-        <Card title="Yeni grup" sub="Örneğin Projeler, Sunucular, Araçlar">
+
+        <Panel title="Yeni grup" desc="Kısayollar ekranında ayrı bir başlık olarak görünür. Örneğin Projeler, Sunucular, Araçlar.">
           <div className="flex gap-2">
-            <input value={newGroup} onChange={(e) => setNewGroup(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && newGroup.trim()) void addGroup(); }} placeholder="Grup adı" style={{ width: 320 }} />
+            <input value={newGroup} onChange={(e) => setNewGroup(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && newGroup.trim()) void addGroup(); }} placeholder="Grup adı" style={{ width: 320 }} aria-label="Yeni grup adı" />
             <Button variant="primary" disabled={!newGroup.trim()} onClick={() => void addGroup()}>Grup ekle</Button>
           </div>
-        </Card>
+        </Panel>
       </div>
-      {toast}
+
+      <Drawer
+        open={open}
+        title={editor?.draft.id ? "Kısayolu düzenle" : "Kısayol ekle"}
+        desc={editor ? `${editor.groupTitle} grubunda` : undefined}
+        onClose={() => setOpen(false)}
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setOpen(false)}>Vazgeç</Button>
+            <Button variant="primary" type="submit" onClick={() => { const f = document.getElementById("shortcut-form") as HTMLFormElement | null; f?.requestSubmit(); }}>
+              {editor?.draft.id ? "Değişiklikleri kaydet" : "Kısayolu ekle"}
+            </Button>
+          </>
+        }
+      >
+        {editor && <ItemForm key={editor.key} draft={editor.draft} onSave={(d) => void saveDraft(d, editor.groupId)} />}
+      </Drawer>
     </>
   );
 }
 
-function ItemEditor({ draft, onSave, onCancel }: { draft: Draft; onSave: (d: Draft) => void; onCancel: () => void }) {
+function ItemForm({ draft, onSave }: { draft: Draft; onSave: (d: Draft) => void }) {
   const [d, setD] = useState<Draft>(draft);
-  const set = (patch: Partial<Draft>) => setD((x) => ({ ...x, ...patch }));
+  const set = (p: Partial<Draft>) => setD((x) => ({ ...x, ...p }));
   const valid = d.label.trim() !== "" && (d.kind === "project" ? (d.path ?? "").trim() !== "" : (d.host ?? "").trim() !== "");
   return (
-    <div className="rounded-lg p-4" style={{ background: "var(--admin-bg)", border: "1px solid var(--admin-line)" }}>
-      <div className="grid grid-cols-3 gap-4">
-        <Field label="Etiket"><input value={d.label} onChange={(e) => set({ label: e.target.value })} autoFocus /></Field>
-        <Field label="Alt yazı" hint="düğmede küçük satır"><input value={d.sublabel ?? ""} onChange={(e) => set({ sublabel: e.target.value || null })} /></Field>
-        <Field label="Geri bildirim" hint="dokununca kiosk'ta gösterilen mesaj"><input value={d.feedback} onChange={(e) => set({ feedback: e.target.value })} placeholder={`${d.label || "…"} açıldı`} /></Field>
-        <Field label="Tür">
-          <select value={d.kind} onChange={(e) => set({ kind: e.target.value === "ssh" ? "ssh" : "project" })}>
-            <option value="project">Proje (VS Code)</option>
-            <option value="ssh">Sunucu (SSH)</option>
-          </select>
+    <form id="shortcut-form" className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); if (valid) onSave(d); }}>
+      <Field label="Etiket" hint="Düğmenin üstündeki ad"><input value={d.label} onChange={(e) => set({ label: e.target.value })} autoFocus /></Field>
+      <Field label="Alt yazı" hint="İsteğe bağlı ikinci satır"><input value={d.sublabel ?? ""} onChange={(e) => set({ sublabel: e.target.value || null })} /></Field>
+
+      <Field label="Tür">
+        <select value={d.kind} onChange={(e) => set({ kind: e.target.value === "ssh" ? "ssh" : "project" })}>
+          <option value="project">Proje — VS Code’da açılır</option>
+          <option value="ssh">Sunucu — SSH oturumu</option>
+        </select>
+      </Field>
+
+      {d.kind === "project" ? (
+        <Field label="Proje yolu" hint="Mac’teki mutlak klasör yolu">
+          <input className="a-mono" value={d.path ?? ""} onChange={(e) => set({ path: e.target.value })} placeholder="/Users/ad/Projects/uygulama" />
         </Field>
-        {d.kind === "project" ? (
-          <Field label="Proje yolu" className="col-span-2" hint="Mac'teki mutlak klasör yolu"><input value={d.path ?? ""} onChange={(e) => set({ path: e.target.value })} placeholder="/Users/…/proje" className="mono" /></Field>
-        ) : (
-          <>
-            <Field label="Sunucu"><input value={d.host ?? ""} onChange={(e) => set({ host: e.target.value })} placeholder="ör. 10.0.0.5 ya da sunucu.alan" className="mono" /></Field>
+      ) : (
+        <>
+          <Field label="Sunucu adresi"><input className="a-mono" value={d.host ?? ""} onChange={(e) => set({ host: e.target.value })} placeholder="sunucu.alan.com" /></Field>
+          <div className="grid grid-cols-2 gap-3">
             <Field label="Kullanıcı"><input value={d.user ?? ""} onChange={(e) => set({ user: e.target.value || null })} placeholder="root" /></Field>
             <Field label="Port"><input type="number" value={d.port ?? 22} onChange={(e) => set({ port: Number(e.target.value) || 22 })} /></Field>
-            <Field label="Açılış">
-              <select value={d.via === "terminal" ? "terminal" : "termius"} onChange={(e) => set({ via: e.target.value === "terminal" ? "terminal" : null })}>
-                <option value="termius">Termius</option>
-                <option value="terminal">Terminal</option>
-              </select>
-            </Field>
-          </>
-        )}
-      </div>
-      <div className="mt-4 flex items-center justify-between">
-        <Toggle checked={d.enabled} onChange={(v) => set({ enabled: v })} label="Kiosk'ta göster" />
-        <div className="flex gap-2">
-          <Button variant="ghost" onClick={onCancel}>Vazgeç</Button>
-          <Button variant="primary" disabled={!valid} onClick={() => onSave(d)}>{d.id ? "Değişiklikleri kaydet" : "Kısayol ekle"}</Button>
-        </div>
-      </div>
-    </div>
+          </div>
+          <Field label="Nerede açılsın" hint="Terminal, SSH anahtarı kuruluysa hiçbir şey sormaz; Termius kimlik seçtirir">
+            <select value={d.via === "terminal" ? "terminal" : "termius"} onChange={(e) => set({ via: e.target.value === "terminal" ? "terminal" : null })}>
+              <option value="termius">Termius</option>
+              <option value="terminal">Terminal</option>
+            </select>
+          </Field>
+        </>
+      )}
+
+      <Field label="Geri bildirim" hint="Dokunulduğunda kiosk’ta beliren mesaj">
+        <input value={d.feedback} onChange={(e) => set({ feedback: e.target.value })} placeholder={`${d.label || "…"} açıldı`} />
+      </Field>
+      <div className="pt-1"><Switch checked={d.enabled} onChange={(v) => set({ enabled: v })} label="Kiosk’ta göster" /></div>
+    </form>
   );
 }

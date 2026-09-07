@@ -10,5 +10,7 @@ export async function register() {
     startAgentLinkMonitor();
     const { startBeszelMonitor } = await import("./lib/server/monitors/beszel");
     startBeszelMonitor();
+    const { startChatMonitor } = await import("./lib/server/monitors/chat");
+    startChatMonitor();
   }
 }

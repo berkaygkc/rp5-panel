@@ -20,6 +20,17 @@ export const SETTING_DEFAULTS = {
   "beszel.url": "http://localhost:8090",
   "beszel.email": "",
   "beszel.password": "",
+  "chatwoot.url": "",
+  "chatwoot.token": "",
+  "chatwoot.accountId": 0,
+  "mattermost.url": "",
+  "mattermost.token": "",
+  "mattermost.login": "",
+  "mattermost.password": "",
+  "chat.pollMs": 30_000,
+  "chat.noticeAssigned": true,
+  "chat.noticeMentions": true,
+  "chat.includeChannels": false,
   "admin.setupDone": false,
   "admin.passwordHash": "",
 };
@@ -27,7 +38,7 @@ export type SettingKey = keyof typeof SETTING_DEFAULTS;
 export type Settings = { [K in SettingKey]: (typeof SETTING_DEFAULTS)[K] };
 
 /** Panele/dışarıya asla verilmeyecek anahtarlar */
-export const SECRET_KEYS: SettingKey[] = ["beszel.password", "admin.passwordHash", "pin.code"];
+export const SECRET_KEYS: SettingKey[] = ["beszel.password", "admin.passwordHash", "pin.code", "chatwoot.token", "mattermost.token", "mattermost.password"];
 
 export interface RuleRow {
   id: string;

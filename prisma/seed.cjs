@@ -37,6 +37,7 @@ const SCREENS = [
   { id: "claude", title: "Claude", tint: "var(--color-terracotta)", order: 2 },
   { id: "mail", title: "Posta", tint: "var(--color-indigo)", order: 3 },
   { id: "infra", title: "Altyapı", tint: "var(--color-teal)", order: 4 },
+  { id: "chat", title: "Sohbet", tint: "var(--color-green)", order: 5 },
 ];
 // Example shortcuts — edit them in the admin panel (/admin → Kısayollar)
 const home = os.homedir();

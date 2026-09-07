@@ -1,164 +1,209 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Plus } from "lucide-react";
-import { Badge, Button, Card, ConfirmButton, Empty, Field, PageHeader, ReorderButtons, Toggle, api, move, useToast } from "@/components/admin/ui";
+import {
+  Button, ConfirmButton, Drawer, Empty, Field, Panel, Reorder, Skeleton, Switch, Tag,
+  api, move, usePoll, useToast,
+} from "@/components/admin/ui";
 
 interface Rule { id: string; name: string; enabled: boolean; order: number; field: string; pattern: string; setSeverity: string | null; setKind: string | null; setScreen: string | null }
 interface Screen { id: string; title: string }
-type Draft = Omit<Rule, "id" | "order">;
+type Draft = Omit<Rule, "id" | "order"> & { id?: string };
 
-const FIELDS = [["text", "Başlık + gövde"], ["title", "Başlık"], ["body", "Gövde"], ["kind", "Tür"], ["account", "Hesap"]] as const;
-const SEVERITIES = [["", "(değiştirme)"], ["info", "Bilgi"], ["attention", "Dikkat"], ["urgent", "Acil"]] as const;
+const FIELDS: Array<[string, string]> = [["text", "Başlık + gövde"], ["title", "Başlık"], ["body", "Gövde"], ["kind", "Tür"], ["account", "Hesap"]];
+const SEVERITIES: Array<[string, string]> = [["", "değiştirme"], ["info", "Bilgi"], ["attention", "Dikkat"], ["urgent", "Acil"]];
+const TONE: Record<string, "ok" | "warn" | "fault"> = { info: "ok", attention: "warn", urgent: "fault" };
 const EMPTY: Draft = { name: "", enabled: true, field: "text", pattern: "", setSeverity: "urgent", setKind: null, setScreen: null };
-const SEV_TONE: Record<string, "neutral" | "warn" | "danger" | "accent"> = { info: "accent", attention: "warn", urgent: "danger" };
 
 export default function RulesPage() {
-  const [rules, setRules] = useState<Rule[] | null>(null);
-  const [saved, setSaved] = useState<Record<string, string>>({});
-  const [screens, setScreens] = useState<Screen[]>([]);
-  const [adding, setAdding] = useState(false);
-  const { toast, show } = useToast();
+  const loadRules = useCallback(() => api<{ rules: Rule[] }>("/api/admin/rules").then((r) => r.rules), []);
+  const loadScreens = useCallback(() => api<{ screens: Screen[] }>("/api/admin/screens").then((r) => r.screens), []);
+  const { data, loading, refresh } = usePoll(loadRules);
+  const screens = usePoll(loadScreens);
+  const [local, setLocal] = useState<Rule[] | null>(null);
+  const [editor, setEditor] = useState<{ key: string; draft: Draft } | null>(null);
+  const [open, setOpen] = useState(false);
+  const seq = useRef(0);
+  const toast = useToast();
 
-  const reload = useCallback(
-    () => api<{ rules: Rule[] }>("/api/admin/rules").then((r) => {
-      setRules(r.rules);
-      setSaved(Object.fromEntries(r.rules.map((x) => [x.id, JSON.stringify(x)])));
-    }),
-    []
+  const rules = local ?? data ?? [];
+  const run = useCallback(
+    async (fn: () => Promise<unknown>, ok: string) => {
+      try { await fn(); setLocal(null); refresh(); toast.ok(ok); return true; }
+      catch (e) { setLocal(null); refresh(); toast.fail((e as Error).message); return false; }
+    },
+    [refresh, toast]
   );
-  useEffect(() => {
-    void reload().catch((e: Error) => show(e.message, "danger"));
-    void api<{ screens: Screen[] }>("/api/admin/screens").then((r) => setScreens(r.screens)).catch(() => null);
-  }, [reload, show]);
 
-  const run = async (fn: () => Promise<unknown>, ok: string) => {
-    try { await fn(); await reload(); show(ok); return true; } catch (e) { show((e as Error).message, "danger"); return false; }
-  };
-  const patch = (id: string, p: Partial<Rule>) => setRules((rs) => rs && rs.map((r) => (r.id === id ? { ...r, ...p } : r)));
-  const saveRule = (r: Rule) => run(() => api("/api/admin/rules", { method: "PUT", json: r }), "Kural kaydedildi");
-  const toggle = (r: Rule, enabled: boolean) => { patch(r.id, { enabled }); void run(() => api("/api/admin/rules", { method: "PUT", json: { ...r, enabled } }), enabled ? "Kural açıldı" : "Kural kapatıldı"); };
   const moveRule = (i: number, dir: -1 | 1) => {
-    if (!rules) return;
     const next = move(rules, i, i + dir);
     if (next === rules) return;
-    setRules(next);
-    void run(() => api("/api/admin/rules", { method: "PUT", json: { reorder: next.map((x) => x.id) } }), "Sıra güncellendi");
+    setLocal(next);
+    void run(() => api("/api/admin/rules", { method: "PUT", json: { reorder: next.map((x) => x.id) } }), "Kural sırası güncellendi");
   };
-  const remove = (id: string) => run(() => api("/api/admin/rules", { method: "DELETE", json: { id } }), "Kural silindi");
-  const create = async (d: Draft) => {
-    if (await run(() => api("/api/admin/rules", { method: "POST", json: d }), "Kural eklendi")) setAdding(false);
+  const toggle = (r: Rule, enabled: boolean) => {
+    setLocal(rules.map((x) => (x.id === r.id ? { ...x, enabled } : x)));
+    void run(() => api("/api/admin/rules", { method: "PUT", json: { ...r, enabled } }), enabled ? "Kural açıldı" : "Kural kapatıldı");
+  };
+  const save = async (d: Draft) => {
+    if (await run(() => api("/api/admin/rules", { method: d.id ? "PUT" : "POST", json: d }), d.id ? "Kural kaydedildi" : "Kural eklendi")) setOpen(false);
+  };
+  const edit = (r?: Rule) => {
+    seq.current += 1;
+    setEditor({ key: `${r?.id ?? "yeni"}:${seq.current}`, draft: r ? { ...r } : EMPTY });
+    setOpen(true);
   };
 
   return (
     <>
-      <PageHeader
-        title="Bildirim kuralları"
-        sub="Gelen her bildirim sırayla bu kurallardan geçer; eşleşen kural önemi, türü ve hedef ekranı değiştirir. İlk kural önce uygulanır."
-        right={<Button variant="primary" onClick={() => setAdding(true)} disabled={adding}><Plus size={14} /> Kural ekle</Button>}
-      />
-      <div className="flex flex-col gap-3">
-        {adding && (
-          <Card title="Yeni kural">
-            <RuleForm draft={EMPTY} screens={screens} onSave={(d) => void create(d)} onCancel={() => setAdding(false)} saveLabel="Kural ekle" />
-          </Card>
+      <header className="a-head">
+        <div>
+          <h1 className="a-title">Bildirim kuralları</h1>
+          <p className="a-sub">
+            Panele düşen her bildirim bu kurallardan sırayla geçer. Eşleşen kural bildirimin önemini, türünü ve dokunulduğunda açılacak ekranı değiştirir.
+          </p>
+        </div>
+        <Button variant="primary" onClick={() => edit()}><Plus size={14} /> Kural ekle</Button>
+      </header>
+
+      <Panel flush>
+        {loading ? (
+          <div className="flex flex-col gap-3 p-4"><Skeleton /><Skeleton /><Skeleton /></div>
+        ) : rules.length === 0 ? (
+          <Empty>Kural yok; her bildirim geldiği gibi gösterilir.</Empty>
+        ) : (
+          <table className="a-tbl">
+            <thead>
+              <tr>
+                <th style={{ width: 52 }}>Sıra</th>
+                <th style={{ width: 66 }}>Açık</th>
+                <th>Kural</th>
+                <th style={{ width: 130 }}>Alan</th>
+                <th>Desen</th>
+                <th style={{ width: 96 }}>Önem</th>
+                <th style={{ width: 150 }} />
+              </tr>
+            </thead>
+            <tbody>
+              {rules.map((r, i) => (
+                <tr key={r.id} data-off={!r.enabled}>
+                  <td className="a-num a-faint">{String(i + 1).padStart(2, "0")}</td>
+                  <td><Switch checked={r.enabled} onChange={(v) => toggle(r, v)} label={undefined} /></td>
+                  <td>
+                    <div style={{ fontWeight: 500 }}>{r.name}</div>
+                    <div className="a-muted text-[12px]">
+                      {r.setKind ? `tür → ${r.setKind}` : "türü değiştirmez"}
+                      {r.setScreen ? ` · ekran → ${screens.data?.find((s) => s.id === r.setScreen)?.title ?? r.setScreen}` : ""}
+                    </div>
+                  </td>
+                  <td className="a-muted">{FIELDS.find(([v]) => v === r.field)?.[1] ?? r.field}</td>
+                  <td><code>{r.pattern}</code></td>
+                  <td>{r.setSeverity ? <Tag tone={TONE[r.setSeverity]}>{SEVERITIES.find(([v]) => v === r.setSeverity)?.[1]}</Tag> : <span className="a-faint">—</span>}</td>
+                  <td>
+                    <div className="a-tbl-actions">
+                      <Reorder canUp={i > 0} canDown={i < rules.length - 1} onUp={() => moveRule(i, -1)} onDown={() => moveRule(i, 1)} />
+                      <Button size="sm" variant="ghost" onClick={() => edit(r)}>Düzenle</Button>
+                      <ConfirmButton onConfirm={() => void run(() => api("/api/admin/rules", { method: "DELETE", json: { id: r.id } }), "Kural silindi")} />
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
-        {rules?.map((r, i) => {
-          const dirty = JSON.stringify(r) !== saved[r.id];
-          return (
-            <Card key={r.id} className={r.enabled ? "" : "opacity-60"}>
-              <div className="mb-3 flex items-center gap-3">
-                <Toggle checked={r.enabled} onChange={(v) => toggle(r, v)} />
-                <span className="text-[12.5px]" style={{ color: "var(--admin-faint)" }}>{i + 1}</span>
-                <input value={r.name} onChange={(e) => patch(r.id, { name: e.target.value })} style={{ width: 280, fontWeight: 600 }} aria-label="Kural adı" />
-                {r.setSeverity && <Badge tone={SEV_TONE[r.setSeverity] ?? "neutral"}>{SEVERITIES.find((s) => s[0] === r.setSeverity)?.[1]}</Badge>}
-                <div className="ml-auto flex items-center gap-2">
-                  {dirty && <Button size="sm" variant="primary" onClick={() => void saveRule(r)}>Kaydet</Button>}
-                  <ReorderButtons canUp={i > 0} canDown={i < rules.length - 1} onUp={() => moveRule(i, -1)} onDown={() => moveRule(i, 1)} />
-                  <ConfirmButton onConfirm={() => void remove(r.id)} />
-                </div>
-              </div>
-              <RuleFields value={r} screens={screens} onChange={(p) => patch(r.id, p)} />
-            </Card>
-          );
-        })}
-        {rules && rules.length === 0 && !adding && <Card><Empty>Kural yok; her bildirim geldiği gibi gösterilir. “Kural ekle” ile başlayın.</Empty></Card>}
-      </div>
-      <RuleTester screens={screens} />
-      {toast}
+      </Panel>
+
+      <Tester screens={screens.data ?? []} />
+
+      <Drawer
+        open={open}
+        title={editor?.draft.id ? "Kuralı düzenle" : "Kural ekle"}
+        desc="Desen, büyük/küçük harf duyarsız bir düzenli ifadedir."
+        onClose={() => setOpen(false)}
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setOpen(false)}>Vazgeç</Button>
+            <Button variant="primary" onClick={() => { const f = document.getElementById("rule-form") as HTMLFormElement | null; f?.requestSubmit(); }}>
+              {editor?.draft.id ? "Değişiklikleri kaydet" : "Kuralı ekle"}
+            </Button>
+          </>
+        }
+      >
+        {editor && <RuleForm key={editor.key} draft={editor.draft} screens={screens.data ?? []} onSave={(d) => void save(d)} />}
+      </Drawer>
     </>
   );
 }
 
-function RuleFields({ value, screens, onChange }: { value: Draft; screens: Screen[]; onChange: (p: Partial<Draft>) => void }) {
+function RuleForm({ draft, screens, onSave }: { draft: Draft; screens: Screen[]; onSave: (d: Draft) => void }) {
+  const [d, setD] = useState<Draft>(draft);
+  const set = (p: Partial<Draft>) => setD((x) => ({ ...x, ...p }));
+  const bad = (() => { try { new RegExp(d.pattern, "i"); return null; } catch { return "Bu düzenli ifade geçersiz"; } })();
+  const valid = d.name.trim() !== "" && d.pattern.trim() !== "" && !bad;
   return (
-    <div className="grid grid-cols-[150px_1fr_150px_150px_160px] gap-3">
-      <Field label="Alan">
-        <select value={value.field} onChange={(e) => onChange({ field: e.target.value })}>
+    <form id="rule-form" className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); if (valid) onSave(d); }}>
+      <Field label="Ad" hint="Kural listesinde göreceğiniz isim"><input value={d.name} onChange={(e) => set({ name: e.target.value })} placeholder="CI hatası" autoFocus /></Field>
+      <Field label="Hangi alana bakılsın">
+        <select value={d.field} onChange={(e) => set({ field: e.target.value })}>
           {FIELDS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
         </select>
       </Field>
-      <Field label="Desen" hint="düzenli ifade, büyük/küçük harf duyarsız">
-        <input value={value.pattern} onChange={(e) => onChange({ pattern: e.target.value })} className="mono" placeholder="ör. (ci|build|deploy).*(fail|hata)" />
+      <Field label="Desen" hint={bad ?? "Düzenli ifade, büyük/küçük harf duyarsız"}>
+        <input className="a-mono" value={d.pattern} onChange={(e) => set({ pattern: e.target.value })} placeholder="(ci|build|deploy).*(fail|hata)" style={bad ? { borderColor: "var(--a-fault)" } : undefined} />
       </Field>
-      <Field label="Önem">
-        <select value={value.setSeverity ?? ""} onChange={(e) => onChange({ setSeverity: e.target.value || null })}>
+      <Field label="Önemi şuna çevir">
+        <select value={d.setSeverity ?? ""} onChange={(e) => set({ setSeverity: e.target.value || null })}>
           {SEVERITIES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
         </select>
       </Field>
-      <Field label="Tür" hint="boşsa değişmez">
-        <input value={value.setKind ?? ""} onChange={(e) => onChange({ setKind: e.target.value || null })} placeholder="ci, mail, system…" />
-      </Field>
-      <Field label="Hedef ekran">
-        <select value={value.setScreen ?? ""} onChange={(e) => onChange({ setScreen: e.target.value || null })}>
-          <option value="">(değiştirme)</option>
+      <Field label="Türü şuna çevir" hint="Boş bırakılırsa dokunulmaz. Kiosk ikonu bu türden gelir."><input value={d.setKind ?? ""} onChange={(e) => set({ setKind: e.target.value || null })} placeholder="ci, mail, chat, server" /></Field>
+      <Field label="Dokununca açılacak ekran">
+        <select value={d.setScreen ?? ""} onChange={(e) => set({ setScreen: e.target.value || null })}>
+          <option value="">değiştirme</option>
           {screens.map((s) => <option key={s.id} value={s.id}>{s.title}</option>)}
         </select>
       </Field>
-    </div>
+      <div className="pt-1"><Switch checked={d.enabled} onChange={(v) => set({ enabled: v })} label="Kural etkin" /></div>
+    </form>
   );
 }
 
-function RuleForm({ draft, screens, onSave, onCancel, saveLabel }: { draft: Draft; screens: Screen[]; onSave: (d: Draft) => void; onCancel: () => void; saveLabel: string }) {
-  const [d, setD] = useState<Draft>(draft);
-  const valid = d.name.trim() !== "" && d.pattern.trim() !== "";
-  return (
-    <div className="flex flex-col gap-3">
-      <Field label="Ad"><input value={d.name} onChange={(e) => setD((x) => ({ ...x, name: e.target.value }))} autoFocus style={{ width: 320 }} placeholder="ör. CI hatası" /></Field>
-      <RuleFields value={d} screens={screens} onChange={(p) => setD((x) => ({ ...x, ...p }))} />
-      <div className="flex justify-end gap-2">
-        <Button variant="ghost" onClick={onCancel}>Vazgeç</Button>
-        <Button variant="primary" disabled={!valid} onClick={() => onSave(d)}>{saveLabel}</Button>
-      </div>
-    </div>
-  );
-}
-
-/** Örnek bildirimi kurallardan geçirip sonucu gösterir */
-function RuleTester({ screens }: { screens: Screen[] }) {
+/** Örnek bir bildirimi kurallardan geçirir; hiçbir şey gönderilmez */
+function Tester({ screens }: { screens: Screen[] }) {
   const [sample, setSample] = useState({ title: "CI: build failed on main", body: "", kind: "mail" });
   const [result, setResult] = useState<{ matched: string[]; result: { severity: string; kind: string; screen?: string } } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const test = async () => {
-    try { setResult(await api("/api/admin/rules/test", { method: "POST", json: sample })); setError(null); } catch (e) { setError((e as Error).message); }
+    try { setResult(await api("/api/admin/rules/test", { method: "POST", json: sample })); setError(null); }
+    catch (e) { setError((e as Error).message); setResult(null); }
   };
   return (
-    <Card title="Kuralları dene" sub="Örnek bir bildirim yazın; hangi kuralların eşleştiğini ve sonucu görün. Hiçbir şey gönderilmez." className="mt-6">
-      <div className="grid grid-cols-[1fr_1fr_140px_auto] items-end gap-3">
-        <Field label="Başlık"><input value={sample.title} onChange={(e) => setSample((s) => ({ ...s, title: e.target.value }))} /></Field>
-        <Field label="Gövde"><input value={sample.body} onChange={(e) => setSample((s) => ({ ...s, body: e.target.value }))} /></Field>
-        <Field label="Tür"><input value={sample.kind} onChange={(e) => setSample((s) => ({ ...s, kind: e.target.value }))} /></Field>
-        <Button onClick={() => void test()} className="mb-[1px]">Dene</Button>
+    <Panel
+      className="mt-4"
+      title="Kuralları dene"
+      desc="Örnek bir bildirim yazın; hangi kuralların eşleştiğini ve sonucun ne olacağını görün. Kiosk’a hiçbir şey gönderilmez."
+      footer={
+        result ? (
+          <>
+            <span>Eşleşen kural: {result.matched.length ? result.matched.join(", ") : "hiçbiri"}</span>
+            <span className="flex items-center gap-3">
+              <Tag tone={TONE[result.result.severity]}>{SEVERITIES.find(([v]) => v === result.result.severity)?.[1] ?? result.result.severity}</Tag>
+              <span>tür {result.result.kind}</span>
+              {result.result.screen && <span>ekran {screens.find((s) => s.id === result.result.screen)?.title ?? result.result.screen}</span>}
+            </span>
+          </>
+        ) : error ? (
+          <span style={{ color: "var(--a-fault)" }}>{error}</span>
+        ) : undefined
+      }
+    >
+      <div className="grid grid-cols-[1fr_1fr_150px_auto] items-end gap-3">
+        <Field label="Başlık"><input value={sample.title} onChange={(e) => setSample({ ...sample, title: e.target.value })} /></Field>
+        <Field label="Gövde"><input value={sample.body} onChange={(e) => setSample({ ...sample, body: e.target.value })} /></Field>
+        <Field label="Tür"><input value={sample.kind} onChange={(e) => setSample({ ...sample, kind: e.target.value })} /></Field>
+        <Button onClick={() => void test()}>Kurallardan geçir</Button>
       </div>
-      {error && <p className="mt-3 text-[12.5px]" style={{ color: "var(--admin-danger)" }}>{error}</p>}
-      {result && (
-        <div className="mt-4 flex items-center gap-4 text-[13px]">
-          <span>Eşleşen: {result.matched.length ? result.matched.join(", ") : "hiçbiri"}</span>
-          <Badge tone={SEV_TONE[result.result.severity] ?? "neutral"}>{SEVERITIES.find((s) => s[0] === result.result.severity)?.[1] ?? result.result.severity}</Badge>
-          <span style={{ color: "var(--admin-muted)" }}>tür {result.result.kind}</span>
-          {result.result.screen && <span style={{ color: "var(--admin-muted)" }}>ekran {screens.find((s) => s.id === result.result.screen)?.title ?? result.result.screen}</span>}
-        </div>
-      )}
-    </Card>
+    </Panel>
   );
 }

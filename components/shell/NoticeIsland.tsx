@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   Bell,
   Mail,
+  MessageCircle,
   Server,
   Sparkles,
   Workflow,
@@ -20,6 +21,7 @@ const KIND: Record<string, { icon: LucideIcon; tint: string }> = {
   ci: { icon: Workflow, tint: "var(--color-orange)" },
   server: { icon: Server, tint: "var(--color-teal)" },
   system: { icon: AlertTriangle, tint: "var(--color-red)" },
+  chat: { icon: MessageCircle, tint: "var(--color-green)" },
 };
 const FALLBACK = { icon: Bell, tint: "var(--color-ink)" };
 

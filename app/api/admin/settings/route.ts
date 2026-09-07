@@ -29,6 +29,17 @@ const VALIDATORS: Partial<Record<SettingKey, (v: unknown) => unknown>> = {
   "beszel.url": (v) => String(v).replace(/\/+$/, ""),
   "beszel.email": (v) => String(v),
   "beszel.password": (v) => String(v),
+  "chatwoot.url": (v) => String(v).trim().replace(/\/+$/, ""),
+  "chatwoot.token": (v) => String(v).trim(),
+  "chatwoot.accountId": (v) => (Number.isFinite(Number(v)) && Number(v) >= 0 ? Math.round(Number(v)) : undefined),
+  "mattermost.url": (v) => String(v).trim().replace(/\/+$/, ""),
+  "mattermost.token": (v) => String(v).trim(),
+  "mattermost.login": (v) => String(v).trim(),
+  "mattermost.password": (v) => String(v),
+  "chat.pollMs": (v) => (Number(v) >= 10_000 ? Math.round(Number(v)) : undefined),
+  "chat.noticeAssigned": (v) => (typeof v === "boolean" ? v : undefined),
+  "chat.noticeMentions": (v) => (typeof v === "boolean" ? v : undefined),
+  "chat.includeChannels": (v) => (typeof v === "boolean" ? v : undefined),
 };
 
 /** Ayar güncelle — maskelenmiş gizli değer ("••••••") gönderilirse dokunulmaz */
