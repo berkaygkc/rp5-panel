@@ -13,10 +13,10 @@ import type { AdminStatus } from "@/components/admin/status";
 interface NavItem { href: string; label: string; icon: LucideIcon; count?: (s: AdminStatus) => number | null }
 const NAV: Array<{ group: string; items: NavItem[] }> = [
   { group: "Genel", items: [{ href: "/admin", label: "Pano", icon: Gauge }] },
-  { group: "Kiosk", items: [
-    { href: "/admin/widgets", label: "Widget’lar", icon: LayoutGrid },
-    { href: "/admin/screens", label: "Ekranlar", icon: Layers, count: (s) => s.counts.screens },
+  { group: "Cihaz", items: [
+    { href: "/admin/screens", label: "Paneller", icon: Layers, count: (s) => s.counts.screens },
     { href: "/admin/shortcuts", label: "Kısayollar", icon: Zap, count: (s) => s.counts.shortcuts },
+    { href: "/admin/widgets", label: "Widget’lar", icon: LayoutGrid },
   ]},
   { group: "Dikkat katmanı", items: [
     { href: "/admin/notices", label: "Aktif bildirimler", icon: Bell, count: (s) => s.notices || null },

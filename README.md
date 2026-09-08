@@ -20,13 +20,13 @@ The same deck, laid out for two other surfaces:
 
 ## What it does
 
-- **A deck you operate, not a dashboard you read.** Six panels sit side by side, each showing its own summary: a headline number, a live graphic, and the one line that matters. Touch one and it expands in place to more than half the screen while its neighbours fall back to spines that still carry their counts — no page change, nothing lost from view. Inside an open panel there is a second level and real work: open a project on the Mac, drill from the fleet into one server's containers, fire a shortcut, scrub a track. Touch nothing for a minute and the deck folds itself back up.
+- **A deck you operate, not a dashboard you read.** The screen is a grid of columns: an app holds a column, or two share one — mail and chat do by default. Each panel shows its own summary: a headline number, a live graphic, and the one line that matters. Touch one and it expands in place, growing sideways and, if it shares a column, downwards too; its neighbours narrow but keep their names, counts and lists. Inside an open panel there is a second level and real work: open a project on the Mac, drill from the fleet into a server and then into one container's full report, fire a shortcut, scrub a track. Touching dead space closes it, and so does a minute of stillness.
 - **Shortcuts.** One tap opens a project in VS Code or an SSH session in Termius or Terminal on the Mac. Each key carries its target and when it last fired; the core counts every successful run, so the widget orders itself by what you actually use. The result appears on the key you pressed.
 - **Claude.** Claude Code sessions on the Mac: running, waiting for you, or closed. Tokens per session, today's usage, and a live event feed for the selected session.
 - **Mail.** Your Spark Desktop inbox, read directly from Spark's local database: accounts, unread counts, message list and preview.
 - **Infra.** A fleet table where processor, memory and disk line up across every server, powered by [Beszel](https://beszel.dev). The left column names what is broken and jumps straight to it. Drill in for rings, services, metrics, `docker inspect` and logs that collapse repeated lines into one row with a count.
 - **Chat.** Chatwoot (customer conversations) and Mattermost (team chat) in one screen: the conversations assigned to you, who is still waiting for your reply and for how long, plus mentions, direct and group messages. Tap an item for the recent messages. Read-only.
-- **Attention layer.** Notices live in the left spine, beside the clock, where they cover nothing. Each one can carry actions, and `urgent` notices persist across restarts until you dismiss them. The lock screen shows how many are waiting. Anything can post a notice: the agent, built-in monitors, a CI webhook, an uptime service. A notice can carry actions, and tapping one routes the work back to the device that can do it.
+- **Attention layer.** A notice arrives in a dock beside the spine, carries its own actions, and withdraws after ten seconds; `urgent` ones stay until dismissed and survive restarts. A bell in the spine counts what is waiting and calls them all back. The lock screen shows the count. Anything can post a notice: the agent, built-in monitors, a CI webhook, an uptime service. A notice can carry actions, and tapping one routes the work back to the device that can do it.
 - **One interface, many surfaces.** The grid is derived from the screen: 4×2 on the strip, 4×3 on a desktop, a single scrolling column on a phone, where the rail lies down and becomes a bottom bar.
 - **Admin panel.** `/admin` from your computer: screens, shortcuts, notice rules, active notices, infra, mail, settings and security. Everything lives in SQLite; the kiosk pulls its configuration from the API, so nothing is hard-coded.
 - **Lock screen.** Server-validated PIN, rate limited, auto-lock after inactivity.
@@ -97,19 +97,19 @@ The Next.js dev server only serves LAN origins it knows about. Set `PANEL_LAN_SU
 | Page | What you manage |
 | --- | --- |
 | Dashboard | Agent, Beszel and server health, counts |
-| Screens | Order, title, colour and visibility of kiosk screens |
+| Panels | Order and visibility of the deck's panels; title and colour, the latter used by the classic shell |
 | Shortcuts | Groups and buttons: project (VS Code) or SSH (Termius or Terminal), ordering, enable/disable |
 | Rules | Notice rules that set severity, kind and target screen; ordering; a live tester |
-| Active notices | What the island is showing right now; send a test notice; dismiss |
-| Widgets | Every widget grouped by app: enable, importance, allowed sizes, pinning, and a dashboard simulator |
+| Active notices | What the device is showing right now; send a test notice; dismiss |
+| Widgets | The classic shell's dashboard: enable, importance, allowed sizes, pinning, and a layout simulator |
 | Chat | Chatwoot and Mattermost credentials with connection tests, polling and notice behaviour, a live preview, and step-by-step docs for obtaining access tokens |
 | Infra | Beszel connection with a connection test, server display names, order and visibility, disk threshold, poll interval |
 | Mail | Excluded account patterns, notice and list limits |
-| Settings | Default theme, lock timeout, rail start slots, Claude waiting threshold |
+| Settings | Default theme, lock timeout, Claude waiting threshold, weather location |
 | Devices | Providers and surfaces on the core, enrolment tokens, revocation |
 | Security | Kiosk PIN and admin password |
 
-The console is keyboard-first: `⌘K` opens a command palette for navigation and quick actions, `⌘S` saves whatever page you are editing, and `Esc` closes drawers. A status strip across the top carries the live state of the agent, the Beszel hub and the chat sources on every page, and the dashboard opens with a to-scale diagram of the kiosk itself. Colour is reserved for state and for kiosk screen tints; the chrome is achromatic.
+The console is keyboard-first: `⌘K` opens a command palette for navigation and quick actions, `⌘S` saves whatever page you are editing, and `Esc` closes drawers. A status strip across the top carries the live state of the agent, the Beszel hub and the chat sources on every page, and the dashboard opens with a to-scale diagram of the deck — the real aspect ratio, the real columns, the pair that shares one, updating as you reorder. Colour is reserved for state and for each app's own hue; the chrome is achromatic.
 
 The kiosk refreshes its configuration every minute and whenever it regains focus. Secrets (the PIN, the Beszel password, the admin password hash) never leave the server; the PIN is validated only by `POST /api/unlock`.
 
@@ -234,9 +234,11 @@ docs                   Screenshots and the original design brief (Turkish)
 The panel targets one device and one distance: a strip display within arm's reach. The rules that follow from that:
 
 - The strip display, 1973×426, is the reference canvas, but no layout is pinned to it: below 900px the deck turns from a row of panels into a vertical accordion and the spine lies down into a top bar, so a phone gets the same system in its own shape.
-- Only `transform` and `opacity` animate; no backdrop blur. The Pi's GPU has to hold 60 fps.
-- Gestures track the finger 1:1, hand off velocity to springs, and can be interrupted at any moment. Feedback happens on pointer-down, not on release.
-- Drill-downs follow one standard: overview → list → detail, with the same header, the same back gesture and the same empty and failure states everywhere.
+- Motion is `transform`, `opacity` and the deck's two grid tracks; no backdrop blur. The Pi's GPU has to hold 60 fps. Expanding content waits for the box to settle before it fades in, so nothing is seen reflowing.
+- Design tokens live on the element the page actually renders. A token declared on a class that is not on stage makes every `var()` shorthand invalid, and transitions die silently — this cost a day to find once.
+- Gestures track the finger 1:1 and can be interrupted at any moment. Feedback happens on pointer-down, not on release. A drag is never a tap: more than ten pixels of travel and the tap is ignored.
+- Drill-downs follow one standard: overview → list → detail, inside the panel, with the same back chevron and the same empty and failure states everywhere.
+- The device has two gears. It works while it is being touched or while something is wrong, and after ninety seconds of quiet it dims, releases whatever panel was open, and waits.
 - Dark and light themes share one token set; the kiosk remembers the user's choice, the admin panel sets the default.
 - The admin panel is a quiet desktop surface: save buttons enable when something changed, deletion is a two-step confirm, and every action reports back in the same words it was named with.
 

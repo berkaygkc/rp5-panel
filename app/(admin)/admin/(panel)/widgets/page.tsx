@@ -79,7 +79,7 @@ export default function WidgetsPage() {
     <>
       <PageHeader
         title="Widget'lar"
-        sub="Pano sabit değil: her widget verisine bakıp ne kadar acil olduğunu söyler, sizin verdiğiniz önemle harmanlanır ve puanı yüksek olan daha büyük yuva alır. Gösterecek bir şeyi olmayan hiç görünmez, boşluğu saat ve hava durumu doldurur."
+        sub="Eski kabuğun (/classic) panosu. Her widget verisine bakıp ne kadar acil olduğunu söyler, sizin verdiğiniz önemle harmanlanır ve puanı yüksek olan daha büyük yuva alır. Cihaz artık Kokpit güvertesini açıyor; burası o kabuğu ve simülasyonu besler."
       />
 
       <div className="grid grid-cols-[1fr_420px] items-start gap-4">

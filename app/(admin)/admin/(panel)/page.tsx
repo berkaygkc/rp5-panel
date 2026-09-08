@@ -50,7 +50,7 @@ export default function DashboardPage() {
       <header className="a-head">
         <div>
           <h1 className="a-title">Pano</h1>
-          <p className="a-sub">Cihazın düzeni, onu besleyen servisler ve şu an kiosk’ta duran bildirimler.</p>
+          <p className="a-sub">Güvertenin düzeni, onu besleyen servisler ve şu an cihazda bekleyen bildirimler.</p>
         </div>
         {status && (
           <div className="a-faint text-right text-[12px]">
@@ -61,20 +61,20 @@ export default function DashboardPage() {
       </header>
 
       <Panel
-        title="Kiosk düzeni"
-        desc="Menü ve kaydırma bu sırayı izler. Bir ekrana dokunarak ayarlarına gidin."
-        actions={<Link href="/admin/screens" className="a-btn" data-size="sm" data-variant="default">Ekranları düzenle</Link>}
+        title="Güverte düzeni"
+        desc="Paneller soldan sağa bu sırayla dizilir. Bir panele dokunarak ayarlarına gidin."
+        actions={<Link href="/admin/screens" className="a-btn" data-size="sm" data-variant="default">Sırayı düzenle</Link>}
         footer={
           <>
             <span className="a-num">1973 × 426 · DPR 0.75</span>
             <span>
-              {status ? `${status.counts.screens} ekran açık · ${status.counts.shortcuts} kısayol · ${status.counts.rules} etkin kural` : ""}
+              {status ? `${status.counts.screens} panel açık · ${status.counts.shortcuts} kısayol · ${status.counts.rules} etkin kural` : ""}
             </span>
           </>
         }
       >
         {screens.loading ? <Skeleton h={132} /> : <ScreenStrip screens={screens.data ?? []} />}
-        {!screens.loading && visible.length === 0 && <p className="a-faint mt-3 text-center">Açık ekran yok.</p>}
+        {!screens.loading && visible.length === 0 && <p className="a-faint mt-3 text-center">Açık panel yok.</p>}
       </Panel>
 
       <div className="mt-4 grid grid-cols-2 items-start gap-4">
@@ -101,7 +101,7 @@ export default function DashboardPage() {
 
         <Panel
           title="Dikkat katmanı"
-          desc="Kiosk’un Dynamic Island’ında şu an duranlar"
+          desc="Cihazın omurgasında şu an duranlar"
           flush
           actions={<Link href="/admin/notices" className="a-btn" data-size="sm" data-variant="ghost">Tümünü yönet</Link>}
         >

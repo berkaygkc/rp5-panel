@@ -87,7 +87,7 @@ export default function SettingsPage() {
               <Row title="Varsayılan tema" desc="Kiosk’ta elle seçilen tema o cihazda kalır; bu yalnızca ilk açılışı belirler.">
                 <Segmented value={cfg.theme} onChange={(theme) => set({ theme })} options={[{ value: "dark", label: "Koyu" }, { value: "light", label: "Açık" }]} />
               </Row>
-              <Row title="Rail’in başlangıç yuvaları" desc="Kiosk ilk açıldığında sağ rail’de duran iki ekran. Sonrasında en son kullanılanlar buraya geçer.">
+              <Row title="Rail’in başlangıç yuvaları" desc="Yalnızca eski kabukta (/classic) kullanılır: ilk açılışta rail’de duran iki ekran. Kokpit güvertesinde rail yoktur.">
                 {[0, 1].map((i) => (
                   <select
                     key={i}
