@@ -49,7 +49,7 @@ class Hub {
   /** Alan → son yayınlanan değer. Yeni yüzey anında dolu ekran görür. */
   private cache = new Map<string, unknown>();
   /** Bekleyen niyetler: id → isteği yapan yüzey */
-  private pending = new Map<string, { origin: Conn; timer: NodeJS.Timeout }>();
+  private pending = new Map<string, { origin: Conn; timer: NodeJS.Timeout; shortcutId?: string }>();
   private seq = 0;
 
   constructor() {
@@ -250,7 +250,13 @@ class Hub {
       this.pending.delete(id);
       this.send(origin, { t: "ack", id, ok: false, message: "cihaz zamanında yanıt vermedi" });
     }, INTENT_TIMEOUT_MS);
-    this.pending.set(id, { origin, timer });
+    // Kısayol çalıştırmalarını sayıyoruz: hangi yüzeyden gelirse gelsin
+    // "en son ne zaman kullandım" bilgisi çekirdekte birikir.
+    const shortcutId =
+      capability === "shortcuts" && action === "run" && args && typeof args === "object"
+        ? (args as { id?: unknown }).id
+        : undefined;
+    this.pending.set(id, { origin, timer, shortcutId: typeof shortcutId === "string" ? shortcutId : undefined });
     this.send(provider, { t: "invoke", id, capability, action, args });
   }
 
@@ -259,6 +265,14 @@ class Hub {
     if (!p) return;
     clearTimeout(p.timer);
     this.pending.delete(id);
+    if (ok && p.shortcutId) {
+      void db()
+        .shortcutItem.update({
+          where: { id: p.shortcutId },
+          data: { lastRunAt: new Date(), runCount: { increment: 1 } },
+        })
+        .catch(() => null);
+    }
     this.send(p.origin, { t: "ack", id, ok, message, data });
   }
 

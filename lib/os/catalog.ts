@@ -74,7 +74,7 @@ export const CATALOG: WidgetMeta[] = [
     id: "infra.health",
     appId: "infra",
     title: "Sunucu sağlığı",
-    sizes: ["2x1", "1x1"],
+    sizes: ["2x2", "2x1", "1x2", "1x1"],
     priority: 60,
     urgency: (d) => {
       if (!d.infra.configured || d.infra.systems.length === 0) return 0;
@@ -87,7 +87,7 @@ export const CATALOG: WidgetMeta[] = [
     id: "shortcuts.panel",
     appId: "shortcuts",
     title: "Kısayollar",
-    sizes: ["2x2", "2x1", "1x1"],
+    sizes: ["2x2", "2x1", "1x2", "1x1"],
     priority: 45,
     urgency: () => 30,
   },

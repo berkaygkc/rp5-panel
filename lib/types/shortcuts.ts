@@ -23,6 +23,9 @@ export interface ShortcutItem {
   sublabel?: string;
   /** Başarılı çalıştırma sonrası toast metni */
   feedback: string;
+  /** Çekirdeğin saydığı son başarılı çalıştırma (ms) ve toplam sayı */
+  lastRunAt?: number | null;
+  runCount?: number;
   /** Mac ajanında çalışacak gerçek eylem */
   run: ShortcutRun;
 }

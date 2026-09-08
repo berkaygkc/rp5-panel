@@ -50,6 +50,9 @@ model ShortcutItem {
   via      String?
   order    Int
   enabled  Boolean       @default(true)
+  /// Son başarılı çalıştırma — panel "en son ne zaman" diye sorabilsin
+  lastRunAt DateTime?
+  runCount  Int          @default(0)
 }
 
 /// Bildirim önem kuralları: alan + düzenli ifade → önem/tür/ekran ataması

@@ -12,6 +12,9 @@ export interface KioskShortcutItem {
   label: string;
   sublabel: string | null;
   feedback: string;
+  /** Son başarılı çalıştırma (ms) ve toplam sayı — çekirdek sayar */
+  lastRunAt: number | null;
+  runCount: number;
   run:
     | { kind: "project"; path: string }
     | { kind: "ssh"; host: string; port?: number; user?: string; via?: "termius" | "terminal" };
@@ -71,6 +74,8 @@ export async function getKioskConfig(): Promise<KioskConfig> {
         label: i.label,
         sublabel: i.sublabel,
         feedback: i.feedback,
+        lastRunAt: i.lastRunAt ? i.lastRunAt.getTime() : null,
+        runCount: i.runCount,
         run:
           i.kind === "project"
             ? { kind: "project" as const, path: i.path ?? "" }
