@@ -1,14 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useLabModel } from "./data";
+import { useLabModel } from "@/lib/kokpit/model";
 import Ufuk from "./Ufuk";
 import Pano from "./Pano";
 import Konsol from "./Konsol";
 import Kokpit from "./Kokpit";
+import type { Gear } from "@/lib/kokpit/model";
 
 export type LabDesign = "ufuk" | "pano" | "konsol" | "kokpit";
-export type Gear = "calm" | "work";
 
 const DESIGNS: { id: LabDesign; key: string; name: string; sub: string }[] = [
   { id: "ufuk", key: "1", name: "Ufuk", sub: "tek çizgi, zaman ekseni" },

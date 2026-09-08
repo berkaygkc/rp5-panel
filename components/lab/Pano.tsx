@@ -1,8 +1,8 @@
 "use client";
 
 import { useRef, useState } from "react";
-import type { Gear } from "./LabHost";
-import { waited, type LabModel } from "./data";
+import type { Gear } from "@/lib/kokpit/model";
+import { waited, type LabModel } from "@/lib/kokpit/model";
 
 /**
  * PANO — kalkış tabelası.

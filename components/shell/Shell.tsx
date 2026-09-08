@@ -237,7 +237,7 @@ export default function Shell() {
           onLock={lock}
         />
       </div>
-      {locked && <LockScreen onUnlock={() => setLocked(false)} />}
+      {locked && <LockScreen onUnlock={() => setLocked(false)} pending={notices.notices.length} />}
     </main>
   );
 }

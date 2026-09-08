@@ -36,7 +36,14 @@ function Key({ onPress, ariaLabel, children }: { onPress: () => void; ariaLabel?
  * Dokunma geri bildirimi üç katmanlı: tuş parlar + küçülür, dolan nokta
  * yaylanarak büyür, yanlış girişte noktalar kızarır ve sarsılır.
  */
-export default function LockScreen({ onUnlock }: { onUnlock: () => void }) {
+export default function LockScreen({
+  onUnlock,
+  pending = 0,
+}: {
+  onUnlock: () => void;
+  /** Kilitliyken bekleyen bildirim sayısı — içerik gösterilmez, yalnızca sayı */
+  pending?: number;
+}) {
   const [pin, setPin] = useState("");
   const [stage, setStage] = useState<Stage>("idle");
   const now = useNow(1000);
@@ -126,6 +133,13 @@ export default function LockScreen({ onUnlock }: { onUnlock: () => void }) {
             ? now.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })
             : "--:--"}
         </div>
+
+        {pending > 0 && (
+          <div className="mt-3 flex items-center gap-2 text-[13px] font-medium text-dim">
+            <span className="h-1.5 w-1.5 rounded-full bg-warn" />
+            {pending} bildirim bekliyor
+          </div>
+        )}
 
         {/* Noktalar — yanlış girişte sarsılır, dolarken pop yapar */}
         <div className="mt-7 flex items-center gap-5 lg:mt-10">

@@ -1,10 +1,10 @@
 "use client";
 
 import { useRef, useState } from "react";
-import type { Gear } from "./LabHost";
+import type { Gear } from "@/lib/kokpit/model";
 import { runShortcutOnAgent } from "@/lib/data/runShortcut";
 import { useShortcuts } from "@/lib/data/useShortcuts";
-import type { LabModel } from "./data";
+import type { LabModel } from "@/lib/kokpit/model";
 
 /**
  * KONSOL — işlenmiş ön panel.

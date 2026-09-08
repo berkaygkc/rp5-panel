@@ -1,6 +1,6 @@
 # RP5 Panel
 
-A small operating system for screens you glance at. A core runs the show, devices dial into it, and a dashboard composes itself out of widgets according to what is actually happening: now playing, Claude Code sessions waiting on you, unanswered chats, unread mail, servers that stopped answering.
+A small operating system for the screen on your desk. A core runs the show, devices dial into it, and the display is a deck of panels you can actually operate: now playing, Claude Code sessions waiting on you, unanswered chats, unread mail, servers that stopped answering — each one a touch away from its detail and its actions, without ever leaving the screen.
 
 It was built for a Raspberry Pi 5 driving an ultra-wide 11.9″ strip, but nothing is tied to that screen. The same interface lays itself out on a desktop, a tablet or a phone, and the core can run on your Mac or on a server behind a domain.
 
@@ -20,13 +20,13 @@ The same dashboard, composed for two other surfaces:
 
 ## What it does
 
-- **A dashboard that composes itself.** Apps publish widgets in grid units. Each widget reports how urgent its own data is; that is blended with the importance you gave it, and the score buys floor space. A widget with nothing to say takes no room at all, the clock and the weather fill what is left, and they step aside when something happens. Layout changes are calm on purpose: a placement holds for twenty seconds unless something critical needs the room.
+- **A deck you operate, not a dashboard you read.** Six panels sit side by side, each showing its own summary: a headline number, a live graphic, and the one line that matters. Touch one and it expands in place to more than half the screen while its neighbours fall back to spines that still carry their counts — no page change, nothing lost from view. Inside an open panel there is a second level and real work: open a project on the Mac, drill from the fleet into one server's containers, fire a shortcut, scrub a track. Touch nothing for a minute and the deck folds itself back up.
 - **Shortcuts.** One tap opens a project in VS Code or an SSH session in Termius or Terminal on the Mac. Each key carries its target and when it last fired; the core counts every successful run, so the widget orders itself by what you actually use. The result appears on the key you pressed.
 - **Claude.** Claude Code sessions on the Mac: running, waiting for you, or closed. Tokens per session, today's usage, and a live event feed for the selected session.
 - **Mail.** Your Spark Desktop inbox, read directly from Spark's local database: accounts, unread counts, message list and preview.
 - **Infra.** A fleet table where processor, memory and disk line up across every server, powered by [Beszel](https://beszel.dev). The left column names what is broken and jumps straight to it. Drill in for rings, services, metrics, `docker inspect` and logs that collapse repeated lines into one row with a count.
 - **Chat.** Chatwoot (customer conversations) and Mattermost (team chat) in one screen: the conversations assigned to you, who is still waiting for your reply and for how long, plus mentions, direct and group messages. Tap an item for the recent messages. Read-only.
-- **Attention layer.** A Dynamic Island above every screen. `info` and `attention` notices shrink to their icon after a few seconds so they cover nothing; `urgent` notices persist across restarts until you dismiss them. Anything can post a notice: the agent, built-in monitors, a CI webhook, an uptime service. A notice can carry actions, and tapping one routes the work back to the device that can do it.
+- **Attention layer.** Notices live in the left spine, beside the clock, where they cover nothing. Each one can carry actions, and `urgent` notices persist across restarts until you dismiss them. The lock screen shows how many are waiting. Anything can post a notice: the agent, built-in monitors, a CI webhook, an uptime service. A notice can carry actions, and tapping one routes the work back to the device that can do it.
 - **One interface, many surfaces.** The grid is derived from the screen: 4×2 on the strip, 4×3 on a desktop, a single scrolling column on a phone, where the rail lies down and becomes a bottom bar.
 - **Admin panel.** `/admin` from your computer: screens, shortcuts, notice rules, active notices, infra, mail, settings and security. Everything lives in SQLite; the kiosk pulls its configuration from the API, so nothing is hard-coded.
 - **Lock screen.** Server-validated PIN, rate limited, auto-lock after inactivity.
@@ -115,9 +115,11 @@ The kiosk refreshes its configuration every minute and whenever it regains focus
 
 ![Admin shortcuts](docs/screenshots/admin-shortcuts.png)
 
-## Widgets
+## Widgets and the classic shell
 
-Widgets are the unit of the dashboard. A widget declares which sizes it supports in grid cells, a default importance, and a function that looks at live data and returns how urgent it is right now.
+The previous interface — a side rail, one screen per app, and a dashboard that composed itself out of widgets — still ships, at `/classic`. Its composition engine is what the admin console's widget simulator drives, and it is the fallback if the deck ever needs to be rolled back.
+
+Widgets are the unit of that dashboard. A widget declares which sizes it supports in grid cells, a default importance, and a function that looks at live data and returns how urgent it is right now.
 
 A widget leads with the answer, not a count. The small slot names the conversation that has waited longest or the server that stopped answering; the count goes in the header. Bigger slots show more of the same list rather than a different idea, so a widget reads as a window into its app.
 
@@ -231,7 +233,7 @@ docs                   Screenshots and the original design brief (Turkish)
 
 The panel targets one device and one distance: a strip display within arm's reach. The rules that follow from that:
 
-- The strip display, 1973×426, is the reference canvas, but no layout is pinned to it: the grid and the shell are derived from the surface, so a phone or a desktop browser gets the same system in its own shape.
+- The strip display, 1973×426, is the reference canvas, but no layout is pinned to it: below 900px the deck turns from a row of panels into a vertical accordion and the spine lies down into a top bar, so a phone gets the same system in its own shape.
 - Only `transform` and `opacity` animate; no backdrop blur. The Pi's GPU has to hold 60 fps.
 - Gestures track the finger 1:1, hand off velocity to springs, and can be interrupted at any moment. Feedback happens on pointer-down, not on release.
 - Drill-downs follow one standard: overview → list → detail, with the same header, the same back gesture and the same empty and failure states everywhere.

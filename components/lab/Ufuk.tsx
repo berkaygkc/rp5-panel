@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { Gear } from "./LabHost";
-import { waited, type LabItem, type LabModel } from "./data";
+import type { Gear } from "@/lib/kokpit/model";
+import { waited, type LabItem, type LabModel } from "@/lib/kokpit/model";
 
 /**
  * UFUK — enstrüman köprüsü.

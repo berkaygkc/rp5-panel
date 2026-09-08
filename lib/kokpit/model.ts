@@ -12,6 +12,9 @@ import type { OsData } from "@/lib/os/types";
  * dil değişken.
  */
 
+/** Ekranın iki vitesi: sakin (göz ucuyla) ve çalışma (iş üstünde) */
+export type Gear = "calm" | "work";
+
 export type LabSeverity = "critical" | "waiting" | "idle";
 export type LabApp = "claude" | "chat" | "mail" | "infra" | "media" | "system";
 

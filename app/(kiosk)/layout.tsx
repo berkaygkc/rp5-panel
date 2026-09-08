@@ -1,11 +1,16 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Archivo, Inter, Martian_Mono } from "next/font/google";
 import "../globals.css";
+import "../kokpit.css";
 
 const inter = Inter({
   subsets: ["latin", "latin-ext"],
   variable: "--font-inter",
 });
+
+/* Kokpit'in kendi sesi: gövde için Archivo, sayılar için Martian Mono */
+const archivo = Archivo({ subsets: ["latin", "latin-ext"], variable: "--lab-grotesk", axes: ["wdth"] });
+const martian = Martian_Mono({ subsets: ["latin"], variable: "--lab-mono", axes: ["wdth"] });
 
 export const metadata: Metadata = {
   title: "RP5 Panel",
@@ -24,7 +29,7 @@ export default function RootLayout({
       lang="tr"
       translate="no"
       suppressHydrationWarning
-      className={inter.variable}
+      className={`${inter.variable} ${archivo.variable} ${martian.variable}`}
     >
       <head>
         {/* Kaydedilmiş tema, ilk boyamadan önce uygulanır (flaş yok) */}
