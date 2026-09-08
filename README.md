@@ -8,11 +8,11 @@ Built with Next.js 16, React 19, Tailwind v4 and Prisma. Only real data, only re
 
 ![Overview screen](docs/screenshots/overview.png)
 
-| Lock screen | Menu | Shortcuts |
+| Lock screen | Claude, opened | Shortcuts, opened |
 | --- | --- | --- |
-| ![Lock](docs/screenshots/lock.png) | ![Menu](docs/screenshots/menu.png) | ![Shortcuts](docs/screenshots/shortcuts.png) |
+| ![Lock](docs/screenshots/lock.png) | ![Claude panel](docs/screenshots/focus.png) | ![Shortcuts panel](docs/screenshots/shortcuts.png) |
 
-The same dashboard, composed for two other surfaces:
+The same deck, laid out for two other surfaces:
 
 | Desktop | Phone |
 | --- | --- |
