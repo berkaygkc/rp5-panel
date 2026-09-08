@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Mail, MessagesSquare, Music2, Server, Sparkles, Zap, type LucideIcon } from "lucide-react";
 import { ChevronLeft } from "lucide-react";
 import PanelArt from "./PanelArt";
@@ -78,6 +78,7 @@ export default function Deck({
   const media = useMedia();
   const { data: groups } = useShortcuts();
   const [fired, setFired] = useState<Record<string, "run" | "ok" | "fail">>({});
+  const tapAt = useRef<{ x: number; y: number } | null>(null);
   const shortcuts = groups.flatMap((g) => g.items);
   const os = model.os;
 
@@ -88,6 +89,19 @@ export default function Deck({
     },
     [focus, setFocus, setSub]
   );
+
+  /* Açık panelde boşluğa dokunmak paneli kapatır. Düğmeler, satırlar ve
+   * sürüklenen parçalar (konum çubuğu gibi) muaf; kaydırma da sayılmaz —
+   * parmak on pikselden fazla gezdiyse dokunuş değil, kaydırmadır. */
+  const maybeCollapse = (e: React.MouseEvent) => {
+    const start = tapAt.current;
+    tapAt.current = null;
+    if (!start) return;
+    if (Math.hypot(e.clientX - start.x, e.clientY - start.y) > 10) return;
+    const el = e.target as HTMLElement;
+    if (el.closest("button, a, input, label, [data-interactive]")) return;
+    setFocus(null);
+  };
 
   const run = (id: string, action: Parameters<typeof runShortcutOnAgent>[1]) => {
     setFired((f) => ({ ...f, [id]: "run" }));
@@ -130,6 +144,8 @@ export default function Deck({
                 gridColumn: ci + 1,
                 gridRow: half ? ri + 1 : "1 / span 2",
               }}
+              onPointerDown={on ? (e) => { tapAt.current = { x: e.clientX, y: e.clientY }; } : undefined}
+              onClick={on ? maybeCollapse : undefined}
             >
               <PanelArt app={id} artwork={id === "media" ? media.data.track?.artworkUrl ?? null : null} />
               <span className="k4-sheen" aria-hidden />

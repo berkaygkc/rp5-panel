@@ -414,7 +414,7 @@ function ContainerReport({ sys, c, now }: { sys: InfraSystem; c: InfraContainer;
           {errors > 0 && <span className="bad">{errors} hata</span>}
           {logs && <span className="dim">son {logs.lines.length} satır</span>}
         </header>
-        <div className="k4-loglines">
+        <div className="k4-loglines" data-interactive>
           {logsError ? (
             <p className="k4-empty">loglar alınamadı: {logsError}</p>
           ) : !logs ? (
@@ -571,6 +571,7 @@ function Scrub({ state, onSeek }: { state: MediaState; onSeek: (sec: number) => 
       <div
         ref={bar}
         className="k4-scrub-track"
+        data-interactive
         onPointerDown={(e) => {
           (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
           drag.current = at(e);
