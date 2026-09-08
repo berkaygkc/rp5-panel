@@ -1,16 +1,16 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { FolderGit2, Pause, Play, Server, SkipBack, SkipForward } from "lucide-react";
 import { useContainerHistory } from "@/lib/data/useContainerHistory";
 import { useContainerInfo, useContainerLogs } from "@/lib/data/useContainerDetail";
 import { runShortcutOnAgent } from "@/lib/data/runShortcut";
-import type { useMedia } from "@/lib/data/useMedia";
+import { playbackPosition, type useMedia } from "@/lib/data/useMedia";
 import type { useShortcuts } from "@/lib/data/useShortcuts";
 import { fmtAgo } from "@/lib/format";
 import { waited, type LabModel } from "@/lib/kokpit/model";
 import { isProblem, type InfraContainer, type InfraSystem, type LogLine } from "@/lib/types/infra";
-import type { Track } from "@/lib/types/media";
+import type { MediaState, Track } from "@/lib/types/media";
 import type { AppId } from "./ids";
 
 /**
@@ -230,7 +230,27 @@ export default function PanelFull({
 
   if (app === "media") {
     const t = media.data.track;
-    if (!t) return <p className="k4-empty">şu an bir şey çalmıyor</p>;
+    /* Çalan bir şey yokken de tuşlar dursun: oynat, en son çalanı geri getirir */
+    if (!t)
+      return (
+        <div className="k4-media quiet">
+          <div className="k4-media-main">
+            <h3 className="k4-d-title big">Sessiz</h3>
+            <p className="k4-d-from">şu an bir şey çalmıyor</p>
+            <div className="k4-transport">
+              <button className="k4-key" onClick={media.actions.prev} aria-label="Önceki">
+                <SkipBack size={20} fill="currentColor" strokeWidth={0} />
+              </button>
+              <button className="k4-key big" onClick={media.actions.togglePlay} aria-label="Oynat">
+                <Play size={26} fill="currentColor" strokeWidth={0} />
+              </button>
+              <button className="k4-key" onClick={media.actions.next} aria-label="Sonraki">
+                <SkipForward size={20} fill="currentColor" strokeWidth={0} />
+              </button>
+            </div>
+          </div>
+        </div>
+      );
     return (
       <div className="k4-media">
         <Art track={t} size={172} playing={media.data.playing} />
@@ -240,7 +260,7 @@ export default function PanelFull({
             {t.artist}
             {t.album ? ` · ${t.album}` : ""}
           </p>
-          <Scrub pos={media.data.positionSec} dur={Math.max(1, t.durationSec)} onSeek={media.actions.seekTo} />
+          <Scrub state={media.data} onSeek={media.actions.seekTo} />
           <div className="k4-transport">
             <button className="k4-key" onClick={media.actions.prev} aria-label="Önceki">
               <SkipBack size={20} fill="currentColor" strokeWidth={0} />
@@ -502,38 +522,75 @@ export function Art({ track, size, playing }: { track: Track; size: number; play
   );
 }
 
-function Scrub({ pos, dur, onSeek }: { pos: number; dur: number; onSeek: (s: number) => void }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [drag, setDrag] = useState<number | null>(null);
-  const pct = ((drag ?? pos) / dur) * 100;
+/**
+ * Konum çubuğu.
+ *
+ * `positionSec` bir çıpadır, canlı konum değildir: çalarken geçen süre onun
+ * üstüne eklenir. O yüzden değer her karede `playbackPosition` ile hesaplanır
+ * ve doğrudan ref'lere yazılır — React'i her saniye yeniden çizdirmeden akar.
+ */
+function Scrub({ state, onSeek }: { state: MediaState; onSeek: (sec: number) => void }) {
+  const bar = useRef<HTMLDivElement>(null);
+  const fill = useRef<HTMLSpanElement>(null);
+  const knob = useRef<HTMLSpanElement>(null);
+  const cur = useRef<HTMLSpanElement>(null);
+  const rest = useRef<HTMLSpanElement>(null);
+  const drag = useRef<number | null>(null);
+  const live = useRef(state);
+
+  useEffect(() => {
+    live.current = state;
+  }, [state]);
+
+  useEffect(() => {
+    let raf = 0;
+    const loop = () => {
+      const s = live.current;
+      const dur = s.track?.durationSec || 1;
+      const pos = drag.current ?? playbackPosition(s);
+      const r = Math.min(1, Math.max(0, pos / dur));
+      if (fill.current) fill.current.style.transform = `scaleX(${r})`;
+      if (knob.current && bar.current) knob.current.style.transform = `translate(${r * bar.current.clientWidth}px, -50%)`;
+      if (cur.current) cur.current.textContent = mmss(pos);
+      if (rest.current) rest.current.textContent = `-${mmss(Math.max(0, dur - pos))}`;
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
   const at = (e: React.PointerEvent) => {
-    const el = ref.current;
+    const el = bar.current;
     if (!el) return 0;
     const r = el.getBoundingClientRect();
-    return Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * dur;
+    return Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * (live.current.track?.durationSec ?? 0);
   };
+
   return (
     <div className="k4-scrub">
       <div
-        ref={ref}
+        ref={bar}
         className="k4-scrub-track"
         onPointerDown={(e) => {
           (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
-          setDrag(at(e));
+          drag.current = at(e);
         }}
-        onPointerMove={(e) => drag !== null && setDrag(at(e))}
+        onPointerMove={(e) => {
+          if (drag.current !== null) drag.current = at(e);
+        }}
         onPointerUp={(e) => {
-          const v = at(e);
-          setDrag(null);
-          onSeek(v);
+          if (drag.current === null) return;
+          onSeek(at(e));
+          // Ajan onayı gelene dek parmağın bıraktığı yeri koru, geri sıçramasın
+          setTimeout(() => (drag.current = null), 150);
         }}
       >
-        <span className="k4-scrub-fill" style={{ width: `${pct}%` }} />
-        <span className="k4-scrub-knob" style={{ left: `${pct}%` }} />
+        <span ref={fill} className="k4-scrub-fill" />
+        <span ref={knob} className="k4-scrub-knob" />
       </div>
       <div className="k4-scrub-time">
-        <span>{mmss(drag ?? pos)}</span>
-        <span>-{mmss(Math.max(0, dur - (drag ?? pos)))}</span>
+        <span ref={cur} />
+        <span ref={rest} />
       </div>
     </div>
   );

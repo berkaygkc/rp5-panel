@@ -273,8 +273,7 @@
   text-overflow: ellipsis;
 }
 .k4-panel.off .k4-name {
-  opacity: 0;
-  transition: opacity 200ms ease;
+  font-size: 11.5px;
 }
 .k4-badge {
   flex: none;
@@ -333,8 +332,7 @@
   justify-content: flex-end;
   min-width: 0;
   gap: 3px;
-  /* Dar panelde metin yeniden akmasın: bu genişliğin altında kırpılır */
-  min-width: 196px;
+  min-width: 0;
 }
 @keyframes k4-in {
   from {
@@ -402,13 +400,23 @@
 .k4-dots i.bad {
   background: var(--k4-red);
 }
-.k4-panel.off .k4-c-title,
-.k4-panel.off .k4-c-sub,
-.k4-panel.off .k4-c-line {
-  opacity: 0;
+/* Dar panel: veri gizlenmez, dar hâline göre kırpılır. İkincil satırlar ve
+ * zaman damgaları düşer; ad, sayı, liste ve tek satırlık özet kalır. */
+.k4-panel.off .k4-c-sub {
+  display: none;
 }
-.k4-panel.off .k4-big-u {
-  opacity: 0;
+.k4-panel.off .k4-mini em {
+  display: none;
+}
+.k4-panel.off .k4-mini {
+  font-size: 11px;
+  padding: 2px 0;
+}
+.k4-panel.off .k4-big-v {
+  font-size: 36px;
+}
+.k4-panel.off .k4-c-title {
+  font-size: 12.5px;
 }
 
 /* ── Açık içerik ── */
@@ -759,13 +767,16 @@
 }
 .k4-scrub-fill {
   position: absolute;
-  inset: 0 auto 0 0;
+  inset: 0;
   border-radius: 3px;
   background: hsl(var(--hue));
+  transform: scaleX(0);
+  transform-origin: left;
 }
 .k4-scrub-knob {
   position: absolute;
   top: 50%;
+  left: 0;
   width: 14px;
   height: 14px;
   margin-left: -7px;
@@ -978,11 +989,7 @@
   border-radius: 2px;
   background: hsl(var(--hue) / 0.45);
 }
-.k4-panel.off .k4-mid,
-.k4-panel.off .k4-foot {
-  opacity: 0;
-  transition: opacity 180ms ease;
-}
+
 
 /* Panel gövdesine uygulamanın kendi rengi siner — güverte renkli olsun */
 .k4-panel {
@@ -1658,4 +1665,17 @@
 .k4-panel.sibling .k4-c-sub,
 .k4-panel.sibling .k4-big-u {
   opacity: 1;
+}
+
+.k4-media.quiet {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.k4-media.quiet .k4-media-main {
+  flex: none;
+  align-items: center;
+}
+.k4-media.quiet .k4-transport {
+  justify-content: center;
 }
