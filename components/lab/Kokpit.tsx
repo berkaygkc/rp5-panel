@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import Deck, { APP_HUE, type AppId } from "@/components/kokpit/Deck";
+import Deck from "@/components/kokpit/Deck";
+import { APP_HUE, type AppId } from "@/components/kokpit/ids";
 import Spine from "@/components/kokpit/Spine";
 import type { Gear, LabModel } from "@/lib/kokpit/model";
 

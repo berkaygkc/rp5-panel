@@ -28,7 +28,7 @@ export function useOsData(): OsData {
   const infra = useInfra();
   const notices = useNotices();
   const weather = useWeather();
-  const now = useNow(1000)?.getTime() ?? 0;
+  const now = useNow(10_000)?.getTime() ?? 0;
   const presence = useDomain<{ capabilities: string[] }>("presence", EMPTY_PRESENCE);
 
   return {

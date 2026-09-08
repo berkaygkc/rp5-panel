@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Lock, X } from "lucide-react";
-import Deck, { APP_HUE, type AppId } from "./Deck";
+import { Bell, Lock, X } from "lucide-react";
+import Deck from "./Deck";
+import { APP_HUE, APP_IDS, type AppId } from "./ids";
 import Spine from "./Spine";
 import LockScreen from "@/components/shell/LockScreen";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
@@ -16,8 +17,6 @@ import { SEVERITY_RANK, type Notice } from "@/lib/notices/types";
 const COLLAPSE_AFTER_MS = 60_000;
 /** Ortalık sakinse ve bu kadar dokunulmadıysa ekran sakin vitese düşer */
 const CALM_AFTER_MS = 90_000;
-
-const APP_IDS: AppId[] = ["claude", "infra", "mail", "chat", "media", "shortcuts"];
 
 /**
  * Kokpit kabuğu — panelin üretimdeki hâli.
@@ -35,8 +34,15 @@ export default function KokpitShell() {
   const [focus, setFocusState] = useState<AppId | null>(null);
   const [sub, setSub] = useState<string | null>(null);
   const [touchedAt, setTouchedAt] = useState(0);
+  const [noticesOpen, setNoticesOpen] = useState(false);
 
   const now = model.os.now;
+  /* Bildirimler: yenisi on saniye kendiliğinden görünür, acil olan hep durur,
+   * rozete dokununca hepsi açılır. Zamanlayıcı yok — hepsi türetilmiş. */
+  const active = [...notices.notices]
+    .filter((n) => n.expiresAt === null || now === 0 || n.expiresAt > now)
+    .sort((a, b) => SEVERITY_RANK[b.severity] - SEVERITY_RANK[a.severity] || b.ts - a.ts);
+  const docked = noticesOpen ? active : active.filter((n) => n.severity === "urgent" || now - n.ts < 10_000);
   const order = useMemo(
     () => screens.map((s) => s.id).filter((id): id is AppId => (APP_IDS as string[]).includes(id)),
     [screens]
@@ -130,23 +136,25 @@ export default function KokpitShell() {
       >
         <Spine
           model={model}
-          notices={
-            <SpineNotices
-              notices={notices.notices}
-              now={now}
-              onDismiss={notices.dismiss}
-              onOpen={(screen) => {
-                if ((APP_IDS as string[]).includes(screen)) setFocus(screen as AppId);
-              }}
-            />
+          badge={
+            active.length > 0 && (
+              <button
+                className={`k4-nbadge ${active[0].severity}`}
+                onClick={() => setNoticesOpen((v) => !v)}
+                aria-label={`${active.length} bildirim`}
+              >
+                <Bell size={15} strokeWidth={2.2} />
+                <span>{active.length}</span>
+              </button>
+            )
           }
           actions={
-            <div className="k4-spine-actions">
+            <>
               <ThemeToggle className="k4-sbtn" />
               <button className="k4-sbtn" onClick={lock} aria-label="Ekranı kilitle">
-                <Lock size={15} strokeWidth={2.1} />
+                <Lock size={17} strokeWidth={2.1} />
               </button>
-            </div>
+            </>
           }
         />
 
@@ -160,14 +168,25 @@ export default function KokpitShell() {
         />
       </div>
 
+      {!locked && (
+        <NoticeDock
+          notices={docked}
+          now={now}
+          onDismiss={notices.dismiss}
+          onOpen={(screen) => {
+            if ((APP_IDS as string[]).includes(screen)) setFocus(screen as AppId);
+          }}
+        />
+      )}
+
       {locked && <LockScreen onUnlock={() => setLocked(false)} pending={notices.notices.length} />}
     </main>
   );
 }
 
-/* ── Bildirimler omurgada: hiçbir paneli örtmezler ─────────────────────── */
+/* ── Bildirim yuvası: güvertenin altında yüzer, hiçbir paneli örtmez ──── */
 
-function SpineNotices({
+function NoticeDock({
   notices,
   now,
   onDismiss,
@@ -179,26 +198,14 @@ function SpineNotices({
   onOpen: (screen: string) => void;
 }) {
   const busy = useRef<string | null>(null);
-  const active = [...notices]
-    .filter((n) => n.expiresAt === null || now === 0 || n.expiresAt > now)
-    .sort((a, b) => SEVERITY_RANK[b.severity] - SEVERITY_RANK[a.severity] || b.ts - a.ts);
-  if (active.length === 0) return null;
-  const top = active.slice(0, 2);
-
+  if (notices.length === 0) return null;
   return (
-    <div className="k4-notices">
-      {top.map((n) => (
+    <div className="k4-dock">
+      {notices.slice(0, 3).map((n) => (
         <article key={n.id} className={`k4-notice ${n.severity}`}>
-          <button
-            className="k4-notice-main"
-            onClick={() => n.screen && onOpen(n.screen)}
-            disabled={!n.screen}
-          >
+          <button className="k4-notice-main" onClick={() => n.screen && onOpen(n.screen)} disabled={!n.screen}>
             <span className="k4-notice-t">{n.title}</span>
             {n.body && <span className="k4-notice-b">{n.body}</span>}
-          </button>
-          <button className="k4-notice-x" onClick={() => onDismiss(n.id)} aria-label="Kapat">
-            <X size={12} strokeWidth={2.6} />
           </button>
           {(n.actions ?? []).slice(0, 2).map((a) => (
             <button
@@ -218,9 +225,12 @@ function SpineNotices({
               {a.label}
             </button>
           ))}
+          <button className="k4-notice-x" onClick={() => onDismiss(n.id)} aria-label="Kapat">
+            <X size={13} strokeWidth={2.6} />
+          </button>
+          <span className="k4-notice-age">{Math.max(0, Math.round((now - n.ts) / 60000))} dk</span>
         </article>
       ))}
-      {active.length > top.length && <span className="k4-notice-more">+{active.length - top.length} bildirim</span>}
     </div>
   );
 }
