@@ -1,7 +1,7 @@
 "use client";
 
 import { AtSign, MessageCircle, MessagesSquare, UserRound, type LucideIcon } from "lucide-react";
-import { Metric, Pill, Tile, TileHead } from "@/components/os/parts";
+import { Pill, Tile, TileHead } from "@/components/os/parts";
 import { fmtAgo } from "@/lib/format";
 import type { WidgetProps } from "@/lib/os/types";
 import type { ChatItem, ChatItemKind } from "@/lib/types/chat";
@@ -14,6 +14,13 @@ function initials(name: string): string {
   return ((p[0]?.[0] ?? "?") + (p.length > 1 ? p[p.length - 1][0] : "")).toLocaleUpperCase("tr-TR");
 }
 
+/** Bekleme rengi ekrandakiyle aynı eşiklerde: çeyrek saatte sararır, saatte kızarır. */
+function waitTone(ms: number): string {
+  if (ms > 60 * 60_000) return "var(--color-err)";
+  if (ms > 15 * 60_000) return "var(--color-warn)";
+  return "var(--color-faint)";
+}
+
 /** Yanıt bekleyen sohbetler: müşteri ve ekip tek listede */
 export function ChatAttentionWidget({ size, data }: WidgetProps) {
   const items = [...data.chat.chatwoot.items, ...data.chat.mattermost.items]
@@ -23,15 +30,23 @@ export function ChatAttentionWidget({ size, data }: WidgetProps) {
 
   const oldest = items.reduce((max: ChatItem | null, i) => (i.waitingSince && (!max?.waitingSince || i.waitingSince < max.waitingSince) ? i : max), null);
 
+  const longest = oldest?.waitingSince ? data.now - oldest.waitingSince : 0;
+
+  /* Küçük yuva: sayı değil, en uzun bekleyenin adı — asıl soru o. */
   if (size === "1x1") {
+    const hero = oldest ?? items[0];
     return (
       <Tile tint={TINT} screen="chat">
-        <TileHead icon={MessagesSquare} title="Sohbet" tint={TINT} />
-        <Metric
-          value={items.length}
-          label={oldest?.waitingSince ? `en uzun ${fmtAgo(oldest.waitingSince, data.now)} bekliyor` : "yanıt bekliyor"}
-          tone={oldest?.waitingSince && data.now - oldest.waitingSince > 15 * 60_000 ? "var(--color-warn)" : undefined}
-        />
+        <TileHead icon={MessagesSquare} title="Sohbet" tint={TINT} trailing={<Pill tint={TINT}>{items.length}</Pill>} />
+        <div className="flex min-h-0 flex-1 flex-col justify-center">
+          <span className="truncate text-[15px] font-semibold leading-tight tracking-[-0.01em]">{hero.title}</span>
+          <span className="mt-0.5 truncate text-[11.5px] text-dim">{hero.preview || hero.subtitle}</span>
+          {longest > 0 && (
+            <span className="mt-1.5 text-[11.5px] font-medium tabular-nums" style={{ color: waitTone(longest) }}>
+              {fmtAgo(oldest!.waitingSince!, data.now)} bekliyor
+            </span>
+          )}
+        </div>
       </Tile>
     );
   }
@@ -39,12 +54,32 @@ export function ChatAttentionWidget({ size, data }: WidgetProps) {
   const rows = items.slice(0, size === "1x2" ? 4 : 3);
   return (
     <Tile tint={TINT} screen="chat">
-      <TileHead icon={MessagesSquare} title="Sohbet" tint={TINT} trailing={<Pill tint={TINT}>{items.length}</Pill>} />
+      <TileHead
+        icon={MessagesSquare}
+        title="Sohbet"
+        tint={TINT}
+        trailing={
+          longest > 0 ? (
+            <span className="text-[11px] font-medium tabular-nums" style={{ color: waitTone(longest) }}>
+              en uzun {fmtAgo(oldest!.waitingSince!, data.now)}
+            </span>
+          ) : (
+            <Pill tint={TINT}>{items.length}</Pill>
+          )
+        }
+      />
       <div className="flex min-h-0 flex-1 flex-col justify-center gap-2">
         {rows.map((i) => {
           const Icon = KIND_ICON[i.kind];
+          const waited = i.waitingSince ? data.now - i.waitingSince : 0;
+          const tone = waitTone(waited);
+          const hot = waited > 60 * 60_000;
           return (
-            <div key={i.id} className="flex items-center gap-2.5">
+            <div
+              key={i.id}
+              className="flex items-center gap-2.5 rounded-[var(--r-md)]"
+              style={hot ? { background: "color-mix(in srgb, var(--color-err) 8%, transparent)", padding: "4px 6px", margin: "-4px -6px" } : undefined}
+            >
               <span
                 className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold"
                 style={{ background: `color-mix(in srgb, ${TINT} 16%, transparent)`, color: TINT }}
@@ -55,9 +90,9 @@ export function ChatAttentionWidget({ size, data }: WidgetProps) {
                 <span className="flex items-center gap-1.5">
                   <span className="min-w-0 truncate text-[13px] font-semibold">{i.title}</span>
                   <Icon size={10} className="shrink-0 text-faint" />
-                  {i.waitingSince && (
-                    <span className="shrink-0 text-[10.5px] tabular-nums" style={{ color: "var(--color-warn)" }}>
-                      {fmtAgo(i.waitingSince, data.now)}
+                  {waited > 0 && (
+                    <span className="shrink-0 text-[10.5px] tabular-nums" style={{ color: tone }}>
+                      {fmtAgo(i.waitingSince!, data.now)}
                     </span>
                   )}
                 </span>

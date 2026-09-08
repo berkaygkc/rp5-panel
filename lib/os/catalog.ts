@@ -48,7 +48,7 @@ export const CATALOG: WidgetMeta[] = [
     id: "mail.inbox",
     appId: "mail",
     title: "Gelen kutusu",
-    sizes: ["2x2", "2x1", "1x1"],
+    sizes: ["2x2", "2x1", "1x2", "1x1"],
     priority: 55,
     urgency: (d) => {
       const unread = d.mail.accounts.reduce((n, a) => n + a.unread, 0);

@@ -48,11 +48,46 @@ export function InboxWidget({ size, data }: WidgetProps) {
   const unread = data.mail.messages.filter((m) => m.unseen);
   const hero = unread[0];
 
+  /* Küçük yuva: sayı başlıkta durur, gövde en yeni postayı gösterir. */
   if (size === "1x1") {
     return (
       <Tile tint={TINT} screen="mail">
-        <TileHead icon={Mail} title="Posta" tint={TINT} />
-        <Metric value={total} label={hero ? `en yenisi ${sender(hero)}` : "okunmamış"} />
+        <TileHead icon={Mail} title="Posta" tint={TINT} trailing={<Pill tint={TINT}>{total}</Pill>} />
+        {hero ? (
+          <div className="flex min-h-0 flex-1 flex-col justify-center">
+            <div className="flex items-center gap-2.5">
+              <Avatar m={hero} size={30} />
+              <span className="min-w-0 flex-1 truncate text-[13.5px] font-semibold leading-tight">{sender(hero)}</span>
+              <span className="shrink-0 text-[10.5px] tabular-nums text-faint">{fmtWhen(hero.receivedAt, data.now)}</span>
+            </div>
+            <div className="mt-1.5 line-clamp-2 text-[12px] leading-snug text-dim">{hero.subject}</div>
+          </div>
+        ) : (
+          <Metric value={total} label="okunmamış" />
+        )}
+      </Tile>
+    );
+  }
+
+  /* Dar ve uzun yuva: kahraman yok, dört posta alt alta. */
+  if (size === "1x2") {
+    return (
+      <Tile tint={TINT} screen="mail">
+        <TileHead icon={Mail} title="Posta" tint={TINT} trailing={<Pill tint={TINT}>{total}</Pill>} />
+        <div className="flex min-h-0 flex-1 flex-col justify-center gap-2.5">
+          {unread.slice(0, 4).map((m) => (
+            <div key={m.pk} className="flex items-center gap-2.5">
+              <Avatar m={m} size={28} />
+              <div className="min-w-0 flex-1 leading-tight">
+                <div className="flex items-baseline gap-2">
+                  <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold">{sender(m)}</span>
+                  <span className="shrink-0 text-[10.5px] tabular-nums text-faint">{fmtWhen(m.receivedAt, data.now)}</span>
+                </div>
+                <div className="truncate text-[11.5px] text-dim">{m.subject}</div>
+              </div>
+            </div>
+          ))}
+        </div>
       </Tile>
     );
   }

@@ -26,7 +26,7 @@ const KIND: Record<string, { icon: LucideIcon; tint: string }> = {
 };
 const FALLBACK = { icon: Bell, tint: "var(--color-ink)" };
 
-/** info/attention bu kadar süre genişler, sonra kapsüle çekilir; urgent hiç çekilmez */
+/** info/attention bu kadar süre genişler, sonra ikona çekilir; urgent hiç çekilmez */
 const EXPAND_MS = 7000;
 const SWIPE_DISMISS_PX = 24;
 const WIDTH_MS = 280;
@@ -41,8 +41,9 @@ function accent(n: Notice): string {
 
 /**
  * Dynamic Island: ekranlardan bağımsız, içerik alanının üst ortasında yüzen kapsül.
- * En önemli bildirim genişler; info/attention 7 sn sonra sayaç kapsülüne çekilir,
- * urgent kullanıcı kapatana kadar açık kalır. Dokun → ilgili ekran; yukarı kaydır → kapat.
+ * En önemli bildirim genişler; info/attention 7 sn sonra ikona çekilir ve altındaki
+ * ekranı örtmez, urgent kullanıcı kapatana kadar açık kalır. Toplanmışken dokunmak
+ * geri açar, açıkken ilgili ekrana gider; yukarı kaydırmak kapatır.
  * Kilitliyken içerik göstermez, yalnızca sayı.
  */
 export default function NoticeIsland({
@@ -127,17 +128,28 @@ export default function NoticeIsland({
           }
           activate();
         }}
-        className="island-in surface-shell pointer-events-auto flex h-12 w-max max-w-[640px] items-center gap-3 overflow-hidden rounded-full pl-2 pr-3"
+        className={`island-in surface-shell pointer-events-auto flex h-12 w-max max-w-[640px] items-center overflow-hidden rounded-full ${
+          expanded ? "gap-3 pl-2 pr-3" : "gap-0 px-2"
+        }`}
         style={{
           outline: top.severity === "urgent" ? `2px solid color-mix(in srgb, ${color} 45%, transparent)` : undefined,
           touchAction: "none",
         }}
       >
         <span
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
+          className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
           style={{ background: `color-mix(in srgb, ${color} 18%, transparent)`, color }}
         >
           <Icon size={16} strokeWidth={2.25} />
+          {/* Toplanmış haldeyken sayı ikonun üstünde durur; kapsül dar kalsın diye */}
+          {!expanded && active.length > 1 && (
+            <span
+              className="absolute -right-1 -top-1 flex h-[15px] min-w-[15px] items-center justify-center rounded-full px-[3px] text-[9.5px] font-bold tabular-nums leading-none text-white"
+              style={{ background: color }}
+            >
+              {active.length}
+            </span>
+          )}
         </span>
 
         {expanded ? (
@@ -190,18 +202,11 @@ export default function NoticeIsland({
               <X size={15} strokeWidth={2.5} />
             </button>
           </>
-        ) : (
-          <span className="flex min-w-0 items-center gap-2 pr-1">
-            <span className="max-w-[220px] truncate text-[13px] font-semibold">
-              {locked ? `${active.length} bildirim` : top.title}
-            </span>
-            {!locked && active.length > 1 && (
-              <span className="shrink-0 rounded-full bg-raised px-2 py-0.5 text-[11px] font-semibold tabular-nums text-dim">
-                {active.length}
-              </span>
-            )}
+        ) : locked ? (
+          <span className="flex min-w-0 items-center gap-2 pl-2 pr-1">
+            <span className="text-[13px] font-semibold tabular-nums">{active.length} bildirim</span>
           </span>
-        )}
+        ) : null}
       </div>
     </div>
   );

@@ -88,7 +88,8 @@ export function ClaudeSessionsWidget({ size, data }: WidgetProps) {
             <p className="mt-1 line-clamp-2 text-[12.5px] leading-snug">{step(hero)}</p>
           </div>
         )}
-        <div className="flex min-h-0 flex-1 flex-col justify-center gap-2">
+        {/* Kahraman varsa satırlar hemen altına yaslanır; yoksa ortalanır. */}
+        <div className={`flex min-h-0 flex-1 flex-col gap-2 ${hero ? "justify-start" : "justify-center"}`}>
           {rows.map((s) => (
             <div key={s.id} className="flex items-center gap-2.5">
               <span
@@ -105,6 +106,9 @@ export function ClaudeSessionsWidget({ size, data }: WidgetProps) {
               <span className="shrink-0 text-[10px] tabular-nums text-faint">{fmtAgo(s.lastActiveAt, data.now)}</span>
             </div>
           ))}
+          {live.length > rows.length + (hero ? 1 : 0) && (
+            <span className="text-[11px] text-faint">ve {live.length - rows.length - (hero ? 1 : 0)} oturum daha</span>
+          )}
         </div>
       </div>
     </Tile>
