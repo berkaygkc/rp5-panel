@@ -36,7 +36,14 @@ function Key({ onPress, ariaLabel, children }: { onPress: () => void; ariaLabel?
  * Dokunma geri bildirimi üç katmanlı: tuş parlar + küçülür, dolan nokta
  * yaylanarak büyür, yanlış girişte noktalar kızarır ve sarsılır.
  */
-export default function LockScreen({ onUnlock }: { onUnlock: () => void }) {
+export default function LockScreen({
+  onUnlock,
+  pending = 0,
+}: {
+  onUnlock: () => void;
+  /** Kilitliyken bekleyen bildirim sayısı — içerik gösterilmez, yalnızca sayı */
+  pending?: number;
+}) {
   const [pin, setPin] = useState("");
   const [stage, setStage] = useState<Stage>("idle");
   const now = useNow(1000);
@@ -103,7 +110,7 @@ export default function LockScreen({ onUnlock }: { onUnlock: () => void }) {
 
   return (
     <div
-      className="absolute inset-0 z-20 flex items-stretch overflow-hidden bg-night"
+      className="absolute inset-0 z-20 flex flex-col items-stretch overflow-hidden bg-night lg:flex-row"
       style={{
         transition: "opacity 450ms var(--ease-out-strong), transform 450ms var(--ease-out-strong)",
         ...(stage === "success"
@@ -114,41 +121,51 @@ export default function LockScreen({ onUnlock }: { onUnlock: () => void }) {
       <AmbientBackground />
       <ThemeToggle className="absolute right-6 top-5 z-10" />
 
-      {/* Sol: dev saat + PIN durumu */}
-      <div className="relative flex flex-1 flex-col items-center justify-center">
-        <div className="text-[17px] font-medium text-dim">
+      {/* Sol: kimlik bloğu — sola yaslı, aradaki boşluğu aurora doldurur */}
+      <div className="relative flex flex-1 flex-col justify-center px-8 pt-10 lg:pl-24 lg:pr-0 lg:pt-0">
+        <div className="text-[16px] font-medium text-dim">
           {now
             ? now.toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" })
             : " "}
         </div>
-        <div className="mt-1 text-[108px] font-semibold leading-none tracking-[-0.03em] tabular-nums">
+        <div className="mt-2 text-[76px] font-semibold leading-[0.86] tracking-[-0.05em] tabular-nums sm:text-[104px] lg:text-[124px]">
           {now
             ? now.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })
             : "--:--"}
         </div>
 
+        {pending > 0 && (
+          <div className="mt-3 flex items-center gap-2 text-[13px] font-medium text-dim">
+            <span className="h-1.5 w-1.5 rounded-full bg-warn" />
+            {pending} bildirim bekliyor
+          </div>
+        )}
+
         {/* Noktalar — yanlış girişte sarsılır, dolarken pop yapar */}
-        <div
-          key={stage === "error" ? "shake" : "still"}
-          className={`mt-9 flex gap-5 ${stage === "error" ? "animate-pin-shake" : ""}`}
-        >
-          {[0, 1, 2, 3].map((i) => (
-            <span
-              key={`${i}-${i < pin.length}`}
-              className={`h-3.5 w-3.5 rounded-full transition-colors duration-150 ${
-                i === pin.length - 1 && stage === "idle" ? "animate-dot-pop" : ""
-              }`}
-              style={dotStyle(i)}
-            />
-          ))}
-        </div>
-        <div className="mt-4 text-[13px] font-medium text-faint">
-          Kilidi açmak için PIN girin
+        <div className="mt-7 flex items-center gap-5 lg:mt-10">
+          <div
+            key={stage === "error" ? "shake" : "still"}
+            className={`flex gap-4 ${stage === "error" ? "animate-pin-shake" : ""}`}
+          >
+            {[0, 1, 2, 3].map((i) => (
+              <span
+                key={`${i}-${i < pin.length}`}
+                className={`h-3 w-3 rounded-full transition-colors duration-150 ${
+                  i === pin.length - 1 && stage === "idle" ? "animate-dot-pop" : ""
+                }`}
+                style={dotStyle(i)}
+              />
+            ))}
+          </div>
+          <div className="text-[13px] font-medium text-faint">Kilidi açmak için PIN girin</div>
         </div>
       </div>
 
       {/* Sağ: tam boy numpad */}
-      <div className="relative flex w-[560px] shrink-0 flex-col py-6 pr-12">
+      <div
+        className="kiosk-lock-keys relative flex min-h-0 w-full flex-1 flex-col p-6 lg:w-[520px] lg:flex-none lg:py-6 lg:pl-10 lg:pr-14"
+        style={{ borderLeft: "1px solid var(--hairline)" }}
+      >
         <div className="grid min-h-0 flex-1 grid-cols-3 grid-rows-4 gap-2.5">
           {KEYS.map((k) => (
             <Key key={k.digit} onPress={() => press(k.digit)}>

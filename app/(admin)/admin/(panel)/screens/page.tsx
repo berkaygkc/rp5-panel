@@ -50,14 +50,15 @@ export default function ScreensPage() {
     <>
       <header className="a-head">
         <div>
-          <h1 className="a-title">Ekranlar</h1>
+          <h1 className="a-title">Paneller</h1>
           <p className="a-sub">
-            Kiosk’un menüsü, sağ rail’i ve kaydırma sırası buradaki sırayı izler. Genel Bakış her zaman ilk sırada ve açık kalır.
+            Güvertedeki paneller soldan sağa buradaki sırayla dizilir; kapattığınız panel güverteden düşer. Posta ile Sohbet
+            bir sütunu paylaşır, Medya’nın satırı yoktur ama hep durur. Renk sütunu yalnızca eski kabuğu (/classic) etkiler.
           </p>
         </div>
       </header>
 
-      <Panel title="Önizleme" desc="Sıralama değiştikçe cihazda ne göreceğinizi gösterir; henüz kaydedilmedi.">
+      <Panel title="Önizleme" desc="Sıralama değiştikçe güvertenin nasıl dizileceğini gösterir; henüz kaydedilmedi.">
         {loading ? <Skeleton h={132} /> : <ScreenStrip screens={rows} onPick={() => {}} />}
       </Panel>
 
@@ -65,7 +66,7 @@ export default function ScreensPage() {
         {loading ? (
           <div className="flex flex-col gap-3 p-4"><Skeleton /><Skeleton /><Skeleton /></div>
         ) : rows.length === 0 ? (
-          <Empty>Kayıtlı ekran yok. Tohum betiği (npm run db:seed) varsayılanları yükler.</Empty>
+          <Empty>Kayıtlı panel yok. Tohum betiği (npm run db:seed) varsayılanları yükler.</Empty>
         ) : (
           <table className="a-tbl">
             <thead>

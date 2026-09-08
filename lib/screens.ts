@@ -1,6 +1,6 @@
 import type { ComponentType } from "react";
 import { ChatIcon, ClaudeIcon, GaugeIcon, MailIcon, ServerIcon, WidgetIcon, type RailIconProps } from "@/components/icons/RailIcons";
-import OverviewScreen from "@/components/screens/OverviewScreen";
+import HomeScreen from "@/components/screens/HomeScreen";
 import ShortcutsScreen from "@/components/screens/ShortcutsScreen";
 import ClaudeScreen from "@/components/screens/ClaudeScreen";
 import MailScreen from "@/components/screens/MailScreen";
@@ -24,7 +24,7 @@ export interface ScreenDef {
  * 2. Yönetim panelinde ekranı ekle (ya da tohumla) — menü, rail ve swipe kendiliğinden çalışır.
  */
 export const SCREEN_COMPONENTS: Record<string, Pick<ScreenDef, "component" | "icon">> = {
-  overview: { component: OverviewScreen, icon: GaugeIcon },
+  overview: { component: HomeScreen, icon: GaugeIcon },
   shortcuts: { component: ShortcutsScreen, icon: WidgetIcon },
   claude: { component: ClaudeScreen, icon: ClaudeIcon },
   mail: { component: MailScreen, icon: MailIcon },

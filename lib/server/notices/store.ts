@@ -49,6 +49,7 @@ class NoticeStore {
       ts: prev?.ts ?? Date.now(),
       expiresAt: ttl === null ? null : Date.now() + ttl,
       meta: input.meta,
+      actions: input.actions,
     };
     const same =
       prev &&

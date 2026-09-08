@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { useKioskConfig, useScreens } from "@/lib/config/ConfigContext";
 import AmbientBackground from "./AmbientBackground";
 import AppMenu from "./AppMenu";
 import LockScreen from "./LockScreen";
 import Pager from "./Pager";
 import SideRail from "./SideRail";
+import BottomBar from "./BottomBar";
 import NoticeIsland from "./NoticeIsland";
 import { useNotices } from "@/lib/data/useNotices";
 
@@ -177,12 +178,18 @@ export default function Shell() {
     return () => window.removeEventListener("keydown", onKey);
   }, [locked, go]);
 
+  // Aktif ekranın kimlik rengi tüm kabuğa dağılır: aurora, dock göstergesi, saniye ibresi
+  const tint = SCREENS[index]?.tint ?? "var(--color-blue)";
+
   return (
-    <main className="relative h-full w-full overflow-hidden bg-night">
+    <main
+      className="relative h-full w-full overflow-hidden bg-night"
+      style={{ ["--screen-tint" as string]: tint } as CSSProperties}
+    >
       <AmbientBackground />
       {/* Panel, kilit açılırken "materialize" olur: ölçek + opaklık birlikte */}
       <div
-        className="relative flex h-full w-full"
+        className="relative flex h-full w-full flex-col lg:flex-row"
         style={{
           transition:
             "transform 550ms var(--ease-out-strong), opacity 550ms var(--ease-out-strong)",
@@ -190,7 +197,9 @@ export default function Shell() {
           opacity: locked ? 0.4 : 1,
         }}
       >
+        {/* Geniş yüzeyde omurga solda; dar yüzeyde alt bara döner */}
         <SideRail
+          className="hidden lg:flex"
           index={index}
           recents={recents}
           menuOpen={menuOpen}
@@ -218,8 +227,17 @@ export default function Shell() {
               onClose={() => setMenuOpen(false)}
             />
         </div>
+        <BottomBar
+          className="lg:hidden"
+          index={index}
+          recents={recents}
+          menuOpen={menuOpen}
+          onSelect={go}
+          onMenu={toggleMenu}
+          onLock={lock}
+        />
       </div>
-      {locked && <LockScreen onUnlock={() => setLocked(false)} />}
+      {locked && <LockScreen onUnlock={() => setLocked(false)} pending={notices.notices.length} />}
     </main>
   );
 }

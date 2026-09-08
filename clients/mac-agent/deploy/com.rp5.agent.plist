@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Mac ajanını açılışta başlatır.
+
+    cp clients/mac-agent/deploy/com.rp5.agent.plist ~/Library/LaunchAgents/
+    # WorkingDirectory ve ProgramArguments yollarını kendi kurulumunuza göre düzeltin
+    launchctl load ~/Library/LaunchAgents/com.rp5.agent.plist
+
+  Ajan dışarı bağlanır: Mac'te açık port gerekmez, çekirdek uzak sunucuda olabilir.
+  Not: Claude Code oturumundan başlatmayın; ajanı kendi terminalinizden ya da
+  buradaki servis olarak çalıştırın.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.rp5.agent</string>
+  <key>WorkingDirectory</key>
+  <string>/Users/DEGISTIR/rp5-panel/clients/mac-agent</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/local/bin/npm</string>
+    <string>start</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>/tmp/rp5-agent.log</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/rp5-agent.err</string>
+</dict>
+</plist>

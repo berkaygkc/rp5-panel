@@ -1,7 +1,8 @@
 /**
- * Hafif hareketli gece zemini: üç büyük radyal parıltı, çok yavaş (50-75 sn)
- * transform döngüleriyle süzülür. Yalnızca transform animasyonu — compositor
- * katmanında çalışır, Pi 5'te kare düşürmez. prefers-reduced-motion'da durur.
+ * Alan katmanı: nötr parıltılar çok yavaş süzülür (50-75 sn, yalnızca transform),
+ * üstlerinde aktif ekranın kimlik rengiyle boyanmış geniş bir aurora durur.
+ * Renk gezinmede bir kez değişir; sürekli hareket eden katman nötr kalır, böylece
+ * Pi 5'te tek bir compositor işi olarak akar.
  */
 export default function AmbientBackground() {
   return (
@@ -9,6 +10,7 @@ export default function AmbientBackground() {
       <div className="ambient-blob ambient-blob-1" />
       <div className="ambient-blob ambient-blob-2" />
       <div className="ambient-blob ambient-blob-3" />
+      <div className="ambient-wash" />
     </div>
   );
 }

@@ -1,24 +1,33 @@
 # RP5 Panel
 
-A touch-panel dashboard for a Raspberry Pi 5 driving an ultra-wide 11.9″ strip display, fed live by a small agent running on your Mac. Now playing, project and server shortcuts, Claude Code sessions, your mail inbox, server monitoring, a Dynamic-Island-style attention layer, and a web admin panel backed by SQLite.
+A small operating system for the screen on your desk. A core runs the show, devices dial into it, and the display is a deck of panels you can actually operate: now playing, Claude Code sessions waiting on you, unanswered chats, unread mail, servers that stopped answering — each one a touch away from its detail and its actions, without ever leaving the screen.
+
+It was built for a Raspberry Pi 5 driving an ultra-wide 11.9″ strip, but nothing is tied to that screen. The same interface lays itself out on a desktop, a tablet or a phone, and the core can run on your Mac or on a server behind a domain.
 
 Built with Next.js 16, React 19, Tailwind v4 and Prisma. Only real data, only real actions: nothing on the panel is a mock.
 
 ![Overview screen](docs/screenshots/overview.png)
 
-| Lock screen | Menu | Shortcuts |
+| Lock screen | Claude, opened | Shortcuts, opened |
 | --- | --- | --- |
-| ![Lock](docs/screenshots/lock.png) | ![Menu](docs/screenshots/menu.png) | ![Shortcuts](docs/screenshots/shortcuts.png) |
+| ![Lock](docs/screenshots/lock.png) | ![Claude panel](docs/screenshots/focus.png) | ![Shortcuts panel](docs/screenshots/shortcuts.png) |
+
+The same deck, laid out for two other surfaces:
+
+| Desktop | Phone |
+| --- | --- |
+| ![Desktop](docs/screenshots/desktop.png) | ![Phone](docs/screenshots/phone.png) |
 
 ## What it does
 
-- **Overview.** A high-craft analog clock, a now-playing card with scrubbing, transport and volume, a live Claude Code activity card, an unread-mail glimpse and a server-health complication. Four fixed slots; empty slots stay quiet tiles.
-- **Shortcuts.** One tap opens a project in VS Code or an SSH session in Termius or Terminal on the Mac. The toast shows the real result.
+- **A deck you operate, not a dashboard you read.** The screen is a grid of columns: an app holds a column, or two share one — mail and chat do by default. Each panel shows its own summary: a headline number, a live graphic, and the one line that matters. Touch one and it expands in place, growing sideways and, if it shares a column, downwards too; its neighbours narrow but keep their names, counts and lists. Inside an open panel there is a second level and real work: open a project on the Mac, drill from the fleet into a server and then into one container's full report, fire a shortcut, scrub a track. Touching dead space closes it, and so does a minute of stillness.
+- **Shortcuts.** One tap opens a project in VS Code or an SSH session in Termius or Terminal on the Mac. Each key carries its target and when it last fired; the core counts every successful run, so the widget orders itself by what you actually use. The result appears on the key you pressed.
 - **Claude.** Claude Code sessions on the Mac: running, waiting for you, or closed. Tokens per session, today's usage, and a live event feed for the selected session.
 - **Mail.** Your Spark Desktop inbox, read directly from Spark's local database: accounts, unread counts, message list and preview.
-- **Infra.** Server grid → containers → container dashboard, powered by [Beszel](https://beszel.dev). CPU, memory and network sparklines, container logs and `docker inspect`, with honest failure states.
+- **Infra.** A fleet table where processor, memory and disk line up across every server, powered by [Beszel](https://beszel.dev). The left column names what is broken and jumps straight to it. Drill in for rings, services, metrics, `docker inspect` and logs that collapse repeated lines into one row with a count.
 - **Chat.** Chatwoot (customer conversations) and Mattermost (team chat) in one screen: the conversations assigned to you, who is still waiting for your reply and for how long, plus mentions, direct and group messages. Tap an item for the recent messages. Read-only.
-- **Attention layer.** A Dynamic Island above every screen. `info` and `attention` notices collapse after a few seconds; `urgent` notices persist across restarts until you dismiss them. Anything can post a notice: the Mac agent, built-in monitors, a CI webhook, an uptime service.
+- **Attention layer.** A notice arrives in a dock beside the spine, carries its own actions, and withdraws after ten seconds; `urgent` ones stay until dismissed and survive restarts. A bell in the spine counts what is waiting and calls them all back. The lock screen shows the count. Anything can post a notice: the agent, built-in monitors, a CI webhook, an uptime service. A notice can carry actions, and tapping one routes the work back to the device that can do it.
+- **One interface, many surfaces.** The grid is derived from the screen: 4×2 on the strip, 4×3 on a desktop, a single scrolling column on a phone, where the rail lies down and becomes a bottom bar.
 - **Admin panel.** `/admin` from your computer: screens, shortcuts, notice rules, active notices, infra, mail, settings and security. Everything lives in SQLite; the kiosk pulls its configuration from the API, so nothing is hard-coded.
 - **Lock screen.** Server-validated PIN, rate limited, auto-lock after inactivity.
 
@@ -27,21 +36,21 @@ Built with Next.js 16, React 19, Tailwind v4 and Prisma. Only real data, only re
 ## How it fits together
 
 ```
- Raspberry Pi 5, Chromium kiosk (1973×426 CSS px)       Your Mac
- ┌──────────────────────────────┐      HTTP + SSE     ┌────────────────────────────────┐
- │  Panel UI                    │◄───────────────────►│  Next.js app        :3012      │
- │  http://<mac>.local:3012     │                     │   /api/config  /api/notices    │
- │                              │      WebSocket      │   /admin       SQLite (Prisma) │
- │                              │◄───────────────────►│  Mac agent          :17705     │
- └──────────────────────────────┘                     │   Spotify · Music · MediaRemote│
-                                                      │   Claude Code · Spark mail     │
-                                                      │   AppleScript shortcuts        │
-                                                      └───────────────┬────────────────┘
-                                                                      │ REST
-                                                       Beszel hub (Docker) ◄── Beszel agents on your servers
+                         ┌──────────────────────────────────┐
+   Mac agent ───────────►│                                  │
+   (provider, dials out) │   Core — Next.js            :3012│
+                         │   /ws   one socket, two roles    │
+   Pi kiosk   ──────────►│   /api  config · notices · admin │
+   Phone      ──────────►│   SQLite (Prisma)                │
+   Browser    ──────────►│                                  │
+   (surfaces)            └───────────────┬──────────────────┘
+                                         │ REST
+                          Beszel hub ◄── agents on your servers
 ```
 
-The Next.js app is the hub. It serves the kiosk UI, holds the configuration database, receives notices from every producer and streams them to the panel over SSE. The Mac agent is a thin Node process that talks to macOS (AppleScript, `media-control`, local files) and speaks a small JSON protocol over WebSocket.
+The Next.js app is the core, and everything else dials into it. There are two roles on the single `/ws` socket. A **provider** announces what it can do; the Mac agent connects outward with a device token, so nothing needs to be reachable on the machine it runs on and the core can sit on a remote host. A **surface** is a screen: the Pi, a phone, a browser tab. Surfaces subscribe to state domains and send intents; the core finds a provider for the capability, forwards the work and carries the acknowledgement back.
+
+The core keeps the last value of every domain, so a surface that connects late opens already full, and it publishes presence so a provider that drops out is visible rather than silently stale. Devices enrol from the console, where a token is issued once and stored only as a hash.
 
 ## Requirements
 
@@ -77,7 +86,7 @@ On first run macOS asks the agent's terminal for automation permission for Spoti
 
 ### Pi kiosk
 
-Point Chromium in kiosk mode at `http://<your-mac>.local:3012`. Using the Bonjour name means the Mac's DHCP address can change without breaking the panel. The kiosk derives the agent's WebSocket address from the page host, so leave `NEXT_PUBLIC_MEDIA_WS` empty unless the agent runs on another machine.
+Point Chromium in kiosk mode at the core's address, for example `http://<your-mac>.local:3012` on a LAN or your own domain once the core is hosted. The kiosk opens one socket back to whatever host served the page, so there is nothing else to configure on the device.
 
 The Next.js dev server only serves LAN origins it knows about. Set `PANEL_LAN_SUBNET` if your network is not `192.168.1.x`.
 
@@ -88,21 +97,44 @@ The Next.js dev server only serves LAN origins it knows about. Set `PANEL_LAN_SU
 | Page | What you manage |
 | --- | --- |
 | Dashboard | Agent, Beszel and server health, counts |
-| Screens | Order, title, colour and visibility of kiosk screens |
+| Panels | Order and visibility of the deck's panels; title and colour, the latter used by the classic shell |
 | Shortcuts | Groups and buttons: project (VS Code) or SSH (Termius or Terminal), ordering, enable/disable |
 | Rules | Notice rules that set severity, kind and target screen; ordering; a live tester |
-| Active notices | What the island is showing right now; send a test notice; dismiss |
+| Active notices | What the device is showing right now; send a test notice; dismiss |
+| Widgets | The classic shell's dashboard: enable, importance, allowed sizes, pinning, and a layout simulator |
 | Chat | Chatwoot and Mattermost credentials with connection tests, polling and notice behaviour, a live preview, and step-by-step docs for obtaining access tokens |
 | Infra | Beszel connection with a connection test, server display names, order and visibility, disk threshold, poll interval |
 | Mail | Excluded account patterns, notice and list limits |
-| Settings | Default theme, lock timeout, rail start slots, Claude waiting threshold |
+| Settings | Default theme, lock timeout, Claude waiting threshold, weather location |
+| Devices | Providers and surfaces on the core, enrolment tokens, revocation |
 | Security | Kiosk PIN and admin password |
 
-The console is keyboard-first: `⌘K` opens a command palette for navigation and quick actions, `⌘S` saves whatever page you are editing, and `Esc` closes drawers. A status strip across the top carries the live state of the agent, the Beszel hub and the chat sources on every page, and the dashboard opens with a to-scale diagram of the kiosk itself. Colour is reserved for state and for kiosk screen tints; the chrome is achromatic.
+The console is keyboard-first: `⌘K` opens a command palette for navigation and quick actions, `⌘S` saves whatever page you are editing, and `Esc` closes drawers. A status strip across the top carries the live state of the agent, the Beszel hub and the chat sources on every page, and the dashboard opens with a to-scale diagram of the deck — the real aspect ratio, the real columns, the pair that shares one, updating as you reorder. Colour is reserved for state and for each app's own hue; the chrome is achromatic.
 
 The kiosk refreshes its configuration every minute and whenever it regains focus. Secrets (the PIN, the Beszel password, the admin password hash) never leave the server; the PIN is validated only by `POST /api/unlock`.
 
 ![Admin shortcuts](docs/screenshots/admin-shortcuts.png)
+
+## Widgets and the classic shell
+
+The previous interface — a side rail, one screen per app, and a dashboard that composed itself out of widgets — still ships, at `/classic`. Its composition engine is what the admin console's widget simulator drives, and it is the fallback if the deck ever needs to be rolled back.
+
+Widgets are the unit of that dashboard. A widget declares which sizes it supports in grid cells, a default importance, and a function that looks at live data and returns how urgent it is right now.
+
+A widget leads with the answer, not a count. The small slot names the conversation that has waited longest or the server that stopped answering; the count goes in the header. Bigger slots show more of the same list rather than a different idea, so a widget reads as a window into its app.
+
+| Size | Cells | Typical use |
+| --- | --- | --- |
+| 1×1 | 1 | the single most important thing, named |
+| 2×1 | 2 | a row of items |
+| 1×2 | 2 | a vertical stack |
+| 2×2 | 4 | the hero, with controls |
+
+The score is `0.4 × importance + 0.6 × urgency`. Above 68 a widget may take four cells, above 42 it may take two, below that it gets one. Zero urgency means it does not appear. Pinning a widget to a slot keeps it there, which is how the clock holds its corner.
+
+The engine is a pure function with a test suite (`npx tsx scripts/compose.test.ts`), which is what makes the admin console able to simulate a situation — a server down, Claude waiting, nothing at all — and show the exact layout the device would produce.
+
+Adding an app means writing widget components, adding an entry to `lib/os/catalog.ts` with its urgency rule, and wiring the component in `lib/os/registry.tsx`. The shell does not change.
 
 ## Notices API
 
@@ -147,6 +179,21 @@ The panel polls Chatwoot and Mattermost from the server, never from the kiosk, a
 
 Enter both under Admin → Chat, which includes a connection test and the exact clicks needed to obtain each token.
 
+## Deploying the core
+
+The core is a Next.js app with a custom server, so HTTP and the `/ws` socket share one port. It runs anywhere Node runs.
+
+```bash
+cp .env.local.example .env      # NOTICE_TOKEN and ADMIN_SESSION_SECRET at minimum
+docker compose up -d --build
+docker compose exec core npx prisma db push
+docker compose exec core node prisma/seed.cjs
+```
+
+Put it behind a reverse proxy with TLS and make sure the proxy forwards WebSocket upgrades on `/ws`. Then open the console, add a device for your Mac, and paste the token into the agent's `.env` next to `PANEL_URL`. The agent dials out, so it works from a laptop on any network.
+
+To keep the agent running, copy `clients/mac-agent/deploy/com.rp5.agent.plist` into `~/Library/LaunchAgents`, fix the paths inside and `launchctl load` it.
+
 ## Configuration
 
 | Variable | Where | Meaning |
@@ -156,8 +203,10 @@ Enter both under Admin → Chat, which includes a connection test and the exact 
 | `BESZEL_URL`, `BESZEL_EMAIL`, `BESZEL_PASSWORD` | panel `.env.local` | Seed values for the Beszel connection; edit later in the admin panel |
 | `PANEL_DATA_DIR` | panel | Directory for `panel.db` and `notices.json`, default `./.data` |
 | `PANEL_LAN_SUBNET` | panel | Subnet allowed to load the dev server, default `192.168.1` |
-| `NEXT_PUBLIC_MEDIA_WS` | panel | Agent address override; leave empty to derive from the page host |
-| `PANEL_URL`, `PANEL_NOTICE_TOKEN` | agent `.env` | Where the agent posts notices and pulls its configuration |
+| `PORT` | core | Port for HTTP and the `/ws` socket, default 3012 |
+| `PANEL_URL` | agent `.env` | The core to dial; the agent derives `ws(s)://…/ws` from it |
+| `DEVICE_TOKEN`, `DEVICE_NAME` | agent `.env` | Enrolment token issued by the console, and how the device names itself |
+| `PANEL_NOTICE_TOKEN` | agent `.env` | Shared secret for posting notices over HTTP |
 
 Everything else (PIN, lock timeout, theme, rail slots, thresholds, mail exclusions) lives in the database and is edited in the admin panel.
 
@@ -184,10 +233,12 @@ docs                   Screenshots and the original design brief (Turkish)
 
 The panel targets one device and one distance: a strip display within arm's reach. The rules that follow from that:
 
-- Fixed 1973×426 viewport, no responsive breakpoints. Every layout is designed for exactly this canvas.
-- Only `transform` and `opacity` animate; no backdrop blur. The Pi's GPU has to hold 60 fps.
-- Gestures track the finger 1:1, hand off velocity to springs, and can be interrupted at any moment. Feedback happens on pointer-down, not on release.
-- Drill-downs follow one standard: grid → list → detail, with the same header, the same back gesture and the same empty and failure states everywhere.
+- The strip display, 1973×426, is the reference canvas, but no layout is pinned to it: below 900px the deck turns from a row of panels into a vertical accordion and the spine lies down into a top bar, so a phone gets the same system in its own shape.
+- Motion is `transform`, `opacity` and the deck's two grid tracks; no backdrop blur. The Pi's GPU has to hold 60 fps. Expanding content waits for the box to settle before it fades in, so nothing is seen reflowing.
+- Design tokens live on the element the page actually renders. A token declared on a class that is not on stage makes every `var()` shorthand invalid, and transitions die silently — this cost a day to find once.
+- Gestures track the finger 1:1 and can be interrupted at any moment. Feedback happens on pointer-down, not on release. A drag is never a tap: more than ten pixels of travel and the tap is ignored.
+- Drill-downs follow one standard: overview → list → detail, inside the panel, with the same back chevron and the same empty and failure states everywhere.
+- The device has two gears. It works while it is being touched or while something is wrong, and after ninety seconds of quiet it dims, releases whatever panel was open, and waits.
 - Dark and light themes share one token set; the kiosk remembers the user's choice, the admin panel sets the default.
 - The admin panel is a quiet desktop surface: save buttons enable when something changed, deletion is a two-step confirm, and every action reports back in the same words it was named with.
 

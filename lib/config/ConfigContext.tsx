@@ -4,11 +4,13 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import { DEFAULT_SCREENS, SCREEN_COMPONENTS, type ScreenDef } from "@/lib/screens";
 import { THEME_STORAGE_KEY, setTheme } from "@/lib/theme";
 import type { ShortcutGroup } from "@/lib/types/shortcuts";
+import type { KioskWidgetConfig } from "@/lib/server/config/kiosk";
 
 /** /api/config yanıtı (lib/server/config/kiosk.ts ile senkron) */
 export interface KioskConfig {
   screens: { id: string; title: string; tint: string }[];
   shortcuts: ShortcutGroup[];
+  widgets: Record<string, KioskWidgetConfig>;
   lockTimeoutMs: number;
   defaultTheme: "dark" | "light";
   defaultRecents: string[];
@@ -18,6 +20,7 @@ export interface KioskConfig {
 const FALLBACK: KioskConfig = {
   screens: DEFAULT_SCREENS.map((s) => ({ id: s.id, title: s.title, tint: s.tint })),
   shortcuts: [],
+  widgets: {},
   lockTimeoutMs: 2 * 60 * 60 * 1000,
   defaultTheme: "dark",
   defaultRecents: ["claude", "shortcuts"],

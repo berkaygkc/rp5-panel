@@ -12,6 +12,9 @@ export interface KioskShortcutItem {
   label: string;
   sublabel: string | null;
   feedback: string;
+  /** Son başarılı çalıştırma (ms) ve toplam sayı — çekirdek sayar */
+  lastRunAt: number | null;
+  runCount: number;
   run:
     | { kind: "project"; path: string }
     | { kind: "ssh"; host: string; port?: number; user?: string; via?: "termius" | "terminal" };
@@ -21,9 +24,18 @@ export interface KioskShortcutGroup {
   title: string;
   items: KioskShortcutItem[];
 }
+export interface KioskWidgetConfig {
+  id: string;
+  enabled: boolean;
+  priority: number;
+  sizes: string[];
+  pinned: { col: number; row: number; size: string } | null;
+}
 export interface KioskConfig {
   screens: KioskScreen[];
   shortcuts: KioskShortcutGroup[];
+  /** Widget ayarları; satırı olmayan widget kendi varsayılanıyla çalışır */
+  widgets: Record<string, KioskWidgetConfig>;
   lockTimeoutMs: number;
   defaultTheme: "dark" | "light";
   defaultRecents: string[];
@@ -32,14 +44,27 @@ export interface KioskConfig {
 
 export async function getKioskConfig(): Promise<KioskConfig> {
   const d = db();
-  const [screens, groups, lockTimeoutMs, defaultTheme, defaultRecents] = await Promise.all([
+  const [screens, groups, widgetRows, lockTimeoutMs, defaultTheme, defaultRecents] = await Promise.all([
     d.screen.findMany({ where: { enabled: true }, orderBy: { order: "asc" } }),
     d.shortcutGroup.findMany({ orderBy: { order: "asc" }, include: { items: { where: { enabled: true }, orderBy: { order: "asc" } } } }),
+    d.widgetSetting.findMany(),
     getSetting("lock.timeoutMs"),
     getSetting("theme.default"),
     getSetting("rail.defaultRecents"),
   ]);
+  const widgets: Record<string, KioskWidgetConfig> = {};
+  for (const w of widgetRows) {
+    widgets[w.id] = {
+      id: w.id,
+      enabled: w.enabled,
+      priority: w.priority,
+      sizes: JSON.parse(w.sizes || "[]") as string[],
+      pinned: w.pinCol !== null && w.pinRow !== null && w.pinSize ? { col: w.pinCol, row: w.pinRow, size: w.pinSize } : null,
+    };
+  }
+
   return {
+    widgets,
     screens: screens.map((s) => ({ id: s.id, title: s.title, tint: s.tint })),
     shortcuts: groups.map((g) => ({
       id: g.id,
@@ -49,6 +74,8 @@ export async function getKioskConfig(): Promise<KioskConfig> {
         label: i.label,
         sublabel: i.sublabel,
         feedback: i.feedback,
+        lastRunAt: i.lastRunAt ? i.lastRunAt.getTime() : null,
+        runCount: i.runCount,
         run:
           i.kind === "project"
             ? { kind: "project" as const, path: i.path ?? "" }

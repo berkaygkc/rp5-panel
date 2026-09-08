@@ -1,11 +1,11 @@
 "use client";
 
-import { agentWsUrl } from "@/lib/agentUrl";
+import { getCore, useCapability } from "@/lib/data/core";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { MediaActions, MediaSource, MediaState, Track } from "@/lib/types/media";
 
-/** Mac ajanı adresi (ör. ws://192.168.1.20:17705). Boşsa bağlantı kurulmaz, kart görünmez. */
+/** Medya durumu çekirdekteki "media" alanından gelir; kaynak hangi cihaz olursa olsun. */
 
 
 /* ── Tel protokolü — clients/mac-agent/src/protocol.ts ile senkron tutun ── */
@@ -85,9 +85,8 @@ export function useMedia(): {
   actions: MediaActions;
 } {
   const [state, setState] = useState<MediaState>(EMPTY);
-  const [stale, setStale] = useState(true);
-
-  const wsRef = useRef<WebSocket | null>(null);
+  // "Bayat" artık bağlantı değil, medya yeteneğini sunan bir cihazın olup olmadığıdır
+  const stale = !useCapability("media");
   const stateRef = useRef(state);
   /* Anlık geri bildirim, onay sonra: ajanın bayat yayını yerel değeri ezmesin */
   const pendingVolume = useRef<Pending<number> | null>(null);
@@ -96,66 +95,35 @@ export function useMedia(): {
     stateRef.current = state;
   }, [state]);
 
-  /* ── WS bağlantısı + otomatik yeniden bağlanma ── */
+  /* ── Çekirdek aboneliği: "media" alanı ── */
   useEffect(() => {
-    const wsUrl = agentWsUrl();
-    if (!wsUrl) return;
-    let closed = false;
-    let retry: number | undefined;
-
-    const connect = () => {
-      const ws = new WebSocket(wsUrl);
-      wsRef.current = ws;
-      ws.onmessage = (ev) => {
-        try {
-          const msg = JSON.parse(String(ev.data)) as { type: string; state: WireMediaState };
-          if (msg.type !== "state") return;
-          const w = msg.state;
-          const now = performance.now();
-          // Bekleyen yerel değer: ajan aynı değeri onaylayana ya da süre dolana dek korunur
-          const pv = pendingVolume.current;
-          const keepVolume = pv !== null && now < pv.until && w.volume !== pv.value;
-          if (pv && (w.volume === pv.value || now >= pv.until)) pendingVolume.current = null;
-          const pp = pendingPlaying.current;
-          const keepPlaying = pp !== null && now < pp.until && w.playing !== pp.value;
-          if (pp && (w.playing === pp.value || now >= pp.until)) pendingPlaying.current = null;
-          setState((s) => ({
-            track: w.track ? trackFromWire(w.track) : null,
-            playing: keepPlaying ? s.playing : w.playing,
-            // Senkron noktasını kendi saatimizle damgala — makine saatleri
-            // arasındaki kayma LAN gecikmesine (ihmal edilebilir) indirgenir
-            positionSec: keepPlaying ? s.positionSec : w.positionSec,
-            positionAt: keepPlaying ? s.positionAt : now,
-            volume: keepVolume ? s.volume : w.volume,
-            source: KNOWN_SOURCES.includes(w.source as MediaSource)
-              ? (w.source as MediaSource)
-              : "system",
-            outputDevice: w.outputDevice,
-          }));
-          setStale(false);
-        } catch {
-          /* bozuk mesajı yok say */
-        }
-      };
-      ws.onclose = () => {
-        if (closed) return;
-        setStale(true);
-        retry = window.setTimeout(connect, 2000);
-      };
-      ws.onerror = () => ws.close();
-    };
-
-    connect();
-    return () => {
-      closed = true;
-      window.clearTimeout(retry);
-      wsRef.current?.close();
-    };
+    return getCore().watch("media", (payload) => {
+      const w = payload as WireMediaState;
+      const now = performance.now();
+      // Bekleyen yerel değer: sağlayıcı aynı değeri onaylayana ya da süre dolana dek korunur
+      const pv = pendingVolume.current;
+      const keepVolume = pv !== null && now < pv.until && w.volume !== pv.value;
+      if (pv && (w.volume === pv.value || now >= pv.until)) pendingVolume.current = null;
+      const pp = pendingPlaying.current;
+      const keepPlaying = pp !== null && now < pp.until && w.playing !== pp.value;
+      if (pp && (w.playing === pp.value || now >= pp.until)) pendingPlaying.current = null;
+      setState((s) => ({
+        track: w.track ? trackFromWire(w.track) : null,
+        playing: keepPlaying ? s.playing : w.playing,
+        // Senkron noktasını kendi saatimizle damgala — makine saatleri
+        // arasındaki kayma ağ gecikmesine (ihmal edilebilir) indirgenir
+        positionSec: keepPlaying ? s.positionSec : w.positionSec,
+        positionAt: keepPlaying ? s.positionAt : now,
+        volume: keepVolume ? s.volume : w.volume,
+        source: KNOWN_SOURCES.includes(w.source as MediaSource) ? (w.source as MediaSource) : "system",
+        outputDevice: w.outputDevice,
+      }));
+    });
   }, []);
 
-  const send = useCallback((cmd: Record<string, unknown>) => {
-    const ws = wsRef.current;
-    if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(cmd));
+  /** Komut doğrudan cihaza değil, çekirdeğe niyet olarak gider */
+  const send = useCallback((action: string, args?: Record<string, unknown>) => {
+    void getCore().intent("media", action, args);
   }, []);
 
   /* Ses adımları art arda gelir; gönderimi hafifçe seyrelt */
@@ -163,7 +131,7 @@ export function useMedia(): {
   const sendVolume = useCallback(
     (v: number) => {
       window.clearTimeout(volumeTimer.current);
-      volumeTimer.current = window.setTimeout(() => send({ type: "setVolume", value: v }), 120);
+      volumeTimer.current = window.setTimeout(() => send("setVolume", { value: v }), 120);
     },
     [send]
   );
@@ -189,19 +157,19 @@ export function useMedia(): {
         positionSec: playbackPosition(s),
         positionAt: performance.now(),
       }));
-      send({ type: "togglePlay" });
+      send("togglePlay");
     }, [send]),
 
-    next: useCallback(() => send({ type: "next" }), [send]),
+    next: useCallback(() => send("next"), [send]),
 
     prev: useCallback(() => {
       // 3 saniyeden sonra "önceki", parçanın başını hedefler
       if (playbackPosition(stateRef.current) > 3) {
         setState((s) => ({ ...s, positionSec: 0, positionAt: performance.now() }));
-        send({ type: "seekTo", sec: 0 });
+        send("seekTo", { sec: 0 });
         return;
       }
-      send({ type: "prev" });
+      send("prev");
     }, [send]),
 
     seekBy: useCallback(
@@ -210,7 +178,7 @@ export function useMedia(): {
         if (!s.track) return;
         const target = clamp(playbackPosition(s) + deltaSec, 0, s.track.durationSec);
         setState((p) => ({ ...p, positionSec: target, positionAt: performance.now() }));
-        send({ type: "seekTo", sec: target });
+        send("seekTo", { sec: target });
       },
       [send]
     ),
@@ -222,7 +190,7 @@ export function useMedia(): {
             ? { ...s, positionSec: clamp(sec, 0, s.track.durationSec), positionAt: performance.now() }
             : s
         );
-        send({ type: "seekTo", sec });
+        send("seekTo", { sec });
       },
       [send]
     ),

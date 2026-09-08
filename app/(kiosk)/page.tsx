@@ -1,10 +1,10 @@
-import Shell from "@/components/shell/Shell";
+import KokpitShell from "@/components/kokpit/KokpitShell";
 import { ConfigProvider } from "@/lib/config/ConfigContext";
 
 export default function Home() {
   return (
     <ConfigProvider>
-      <Shell />
+      <KokpitShell />
     </ConfigProvider>
   );
 }

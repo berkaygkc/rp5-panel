@@ -444,7 +444,17 @@ const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : N
  */
 function parseLogLine(raw: string): { t: number | null; level: string | null; text: string } {
   const line = raw.replace(/^\d{4}-\d{2}-\d{2}T\S+\s/, ""); // docker --timestamps öneki
-  if (!line.startsWith("{")) return { t: null, level: null, text: line.slice(0, 500) };
+  if (!line.startsWith("{")) {
+    // Düz metin satırı: "2026/09/08 06:00:22 WARN mesaj". Zaman dilimi yazmıyorsa
+    // container'ın saati UTC kabul edilir; Docker imajlarının neredeyse tamamı öyle.
+    const m = /^(\d{4}[/-]\d{2}[/-]\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?)(Z|[+-]\d{2}:?\d{2})?\s+(?:\[?([A-Za-z]{3,7})\]?[:\s]\s*)?([\s\S]*)$/.exec(line);
+    if (!m) return { t: null, level: null, text: line.slice(0, 500) };
+    const t = Date.parse(m[1].replace(/\//g, "-").replace(" ", "T") + (m[2] ?? "Z")) || null;
+    const lvl = m[3]?.toLowerCase();
+    const known = lvl ? ["trace", "debug", "info", "warn", "warning", "error", "fatal"].includes(lvl) : false;
+    const text = (known ? m[4] : `${m[3] ?? ""} ${m[4]}`).trim();
+    return { t, level: known ? lvl! : null, text: text.slice(0, 500) };
+  }
   const j = safeJson(line);
   if (!j) return { t: null, level: null, text: line.slice(0, 500) };
   const lvlRaw = j.level ?? j.lvl ?? j.severity;
@@ -455,11 +465,17 @@ function parseLogLine(raw: string): { t: number | null; level: string | null; te
   const msg = j.msg ?? j.message ?? j.event;
   const req = j.req && typeof j.req === "object" ? (j.req as { method?: string; url?: string }) : null;
   const res = j.res && typeof j.res === "object" ? (j.res as { statusCode?: number }) : null;
-  let text = typeof msg === "string" ? msg : "";
+  // Temporal gibi bazı üreticiler mesajsız satırlarda msg alanına "none" yazar;
+  // bunu boş kabul edip satırın gerçek alanlarını göstermek daha okunur.
+  let text = typeof msg === "string" && msg !== "none" ? msg : "";
   if (req?.method || req?.url) text = `${req.method ?? ""} ${req.url ?? ""}${res?.statusCode ? ` → ${res.statusCode}` : ""}${text ? ` · ${text}` : ""}`.trim();
   if (!text) {
-    const rest = { ...j }; delete rest.level; delete rest.time; delete rest.pid; delete rest.hostname;
-    text = JSON.stringify(rest).slice(0, 300);
+    const NOISE = new Set(["level", "lvl", "severity", "time", "timestamp", "ts", "@timestamp", "pid", "hostname", "msg", "message", "event", "logging-call-at", "caller", "stacktrace", "v"]);
+    text = Object.entries(j)
+      .filter(([k, v]) => !NOISE.has(k) && v !== null && v !== "")
+      .map(([k, v]) => `${k}=${typeof v === "object" ? JSON.stringify(v) : String(v)}`)
+      .join("  ")
+      .slice(0, 300);
   }
   return { t, level, text: text.slice(0, 500) };
 }

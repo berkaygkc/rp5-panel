@@ -1,47 +1,112 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { APP_HUE, APP_IDS, APP_NAME, type AppId } from "@/components/kokpit/ids";
 
-export interface StripScreen { id: string; title: string; tint: string; enabled: boolean }
+export interface StripScreen {
+  id: string;
+  title: string;
+  tint: string;
+  enabled: boolean;
+}
+
+interface Column {
+  key: string;
+  apps: { id: AppId; title: string; enabled: boolean; index: number | null }[];
+}
+
+/** Güvertede bir sütunu paylaşan uygulamalar — Deck ile aynı kural */
+const PAIRS: AppId[][] = [["mail", "chat"]];
 
 /**
- * Kiosk düzeninin şerit diyagramı — konsolun imza öğesi.
- * Cihazın gerçek en-boy oranında (1973×426) çizilir: solda sabit rail, sağda
- * ekranların sırası. Sıralama değiştikçe canlı güncellenir, böylece kaydetmeden
- * önce cihazda ne olacağı görülür.
+ * Güverte diyagramı — konsolun imza öğesi.
+ *
+ * Cihazın gerçek en-boy oranında (1973×426) çizilir: solda dar omurga, sağda
+ * panellerin sırası. Posta ile Sohbet bir sütunu paylaşır, medyanın ekran
+ * satırı yoktur ama güvertede durur. Sıralama değiştikçe canlı güncellenir,
+ * böylece kaydetmeden önce cihazda ne olacağı görülür.
  */
 export function ScreenStrip({ screens, onPick }: { screens: StripScreen[]; onPick?: (id: string) => void }) {
   const router = useRouter();
   const go = onPick ?? ((id: string) => router.push(`/admin/screens#${id}`));
+
+  const onDeck = screens.filter((s) => s.enabled && (APP_IDS as string[]).includes(s.id));
+  const order = onDeck.map((s) => s.id as AppId);
+  if (!order.includes("media")) order.push("media");
+
+  const seen = new Set<AppId>();
+  const columns: Column[] = [];
+  for (const id of order) {
+    if (seen.has(id)) continue;
+    const pair = PAIRS.find((p) => p.includes(id) && p.every((x) => order.includes(x)));
+    const ids = pair ?? [id];
+    ids.forEach((x) => seen.add(x));
+    columns.push({
+      key: ids.join("+"),
+      apps: ids.map((x) => {
+        const row = screens.find((s) => s.id === x);
+        const i = onDeck.findIndex((s) => s.id === x);
+        return { id: x, title: row?.title ?? APP_NAME[x], enabled: row?.enabled ?? true, index: i < 0 ? null : i + 1 };
+      }),
+    });
+  }
+
+  const offDeck = screens.filter((s) => !s.enabled || !(APP_IDS as string[]).includes(s.id));
+
   return (
-    <div className="a-strip-device">
-      <div className="a-strip-rail" aria-hidden>
-        <span className="h-1.5 w-1.5 rounded-full" style={{ background: "rgba(255,255,255,.5)" }} />
-        <span className="flex flex-col gap-1">
-          <span className="h-1 w-6 rounded-full" style={{ background: "rgba(255,255,255,.28)" }} />
-          <span className="h-1 w-6 rounded-full" style={{ background: "rgba(255,255,255,.16)" }} />
-        </span>
-        <span className="h-1.5 w-1.5 rounded-full" style={{ background: "rgba(255,255,255,.2)" }} />
+    <>
+      <div className="a-strip-device">
+        <div className="a-strip-spine" aria-hidden>
+          <span className="a-strip-clock" />
+          <span className="a-strip-dots">
+            <i />
+            <i />
+            <i />
+            <i />
+          </span>
+          <span className="a-strip-keys">
+            <i />
+            <i />
+          </span>
+        </div>
+        <div className="a-strip-screens">
+          {columns.map((col) => (
+            <div key={col.key} className="a-strip-col">
+              {col.apps.map((a) => (
+                <button
+                  key={a.id}
+                  type="button"
+                  className="a-strip-screen"
+                  onClick={() => go(a.id)}
+                  title={`${a.title} — ayarları`}
+                  style={{
+                    background: `linear-gradient(180deg, hsl(${APP_HUE[a.id]} / 0.24), hsl(${APP_HUE[a.id]} / 0.06))`,
+                    boxShadow: `inset 0 0 0 1px hsl(${APP_HUE[a.id]} / 0.34)`,
+                  }}
+                >
+                  <span className="a-strip-name">{a.title}</span>
+                  <span className="a-strip-index">
+                    {a.index ? String(a.index).padStart(2, "0") : "sabit"}
+                  </span>
+                </button>
+              ))}
+            </div>
+          ))}
+        </div>
       </div>
-      <div className="a-strip-screens">
-        {screens.map((s, i) => (
-          <button
-            key={s.id}
-            type="button"
-            className="a-strip-screen"
-            data-off={!s.enabled}
-            onClick={() => go(s.id)}
-            title={s.enabled ? `${s.title} — düzenle` : `${s.title} — kiosk'ta gizli`}
-            style={{
-              background: `linear-gradient(180deg, color-mix(in srgb, ${s.tint} 26%, #101216), color-mix(in srgb, ${s.tint} 9%, #0b0d11))`,
-              boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${s.tint} 34%, transparent)`,
-            }}
-          >
-            <span className="a-strip-name">{s.title}</span>
-            <span className="a-strip-index">{s.enabled ? String(i + 1).padStart(2, "0") : "gizli"}</span>
-          </button>
-        ))}
-      </div>
-    </div>
+
+      {offDeck.length > 0 && (
+        <p className="a-faint mt-3 text-[12px]">
+          Güvertede değil:{" "}
+          {offDeck.map((s, i) => (
+            <span key={s.id}>
+              {i > 0 ? ", " : ""}
+              {s.title}
+              {s.enabled ? " (yalnızca /classic)" : " (kapalı)"}
+            </span>
+          ))}
+        </p>
+      )}
+    </>
   );
 }

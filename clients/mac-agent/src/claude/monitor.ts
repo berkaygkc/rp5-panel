@@ -159,6 +159,10 @@ export class ClaudeMonitor {
         screen: "claude",
         ttlMs: 60 * 60_000,
         meta: { session: s.id, project: s.project },
+        // Bildirimden doğrudan iş: proje panelden değil, işi yapan cihazda açılır
+        actions: s.cwd
+          ? [{ id: "open", label: "Projeyi aç", capability: "shortcuts", action: "run", args: { id: `claude:${s.id}`, action: { kind: "project", path: s.cwd } } }]
+          : undefined,
       });
     }
     for (const sid of [...this.waitingSince.keys()]) {

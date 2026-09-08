@@ -4,6 +4,9 @@
  */
 export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {
+    // Santral: soket yükseltmelerini server.mjs buraya devreder
+    const { startHub } = await import("./lib/server/core/hub");
+    startHub();
     const { startConfigLoader } = await import("./lib/server/config/settings");
     startConfigLoader();
     const { startAgentLinkMonitor } = await import("./lib/server/monitors/agentLink");

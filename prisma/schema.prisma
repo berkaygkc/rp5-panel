@@ -50,6 +50,9 @@ model ShortcutItem {
   via      String?
   order    Int
   enabled  Boolean       @default(true)
+  /// Son başarılı çalıştırma — panel "en son ne zaman" diye sorabilsin
+  lastRunAt DateTime?
+  runCount  Int          @default(0)
 }
 
 /// Bildirim önem kuralları: alan + düzenli ifade → önem/tür/ekran ataması
@@ -72,4 +75,32 @@ model InfraSystemOverride {
   displayName String?
   order       Int     @default(0)
   hidden      Boolean @default(false)
+}
+
+/// Çekirdeğe bağlanan cihazlar: sağlayıcılar (Mac ajanı) ve yüzeyler (Pi, telefon).
+/// Anahtar yalnızca özetiyle saklanır; ham değer bir kez gösterilir.
+model Device {
+  id           String    @id @default(cuid())
+  name         String
+  /// provider | surface
+  role         String
+  tokenHash    String    @unique
+  /// JSON dizi: sunulan yetenekler (sağlayıcılar için)
+  capabilities String    @default("[]")
+  lastSeenAt   DateTime?
+  revoked      Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+}
+
+/// Widget ayarları: kullanıcının verdiği önem, izin verilen boyutlar ve sabit yuva.
+/// Satırı olmayan widget kayıt defterindeki varsayılanlarıyla çalışır.
+model WidgetSetting {
+  id       String  @id
+  enabled  Boolean @default(true)
+  priority Int
+  /// JSON dizi; boşsa widget'ın kendi boyut listesi geçerli
+  sizes    String  @default("[]")
+  pinCol   Int?
+  pinRow   Int?
+  pinSize  String?
 }
