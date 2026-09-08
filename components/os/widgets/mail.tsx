@@ -74,7 +74,8 @@ export function InboxWidget({ size, data }: WidgetProps) {
     return (
       <Tile tint={TINT} screen="mail">
         <TileHead icon={Mail} title="Posta" tint={TINT} trailing={<Pill tint={TINT}>{total}</Pill>} />
-        <div className="flex min-h-0 flex-1 flex-col justify-center gap-2.5">
+        {/* Yüzeye göre yükseklik değişir; satırlar üstten dizilir, sığmayan kırpılır */}
+        <div className="flex min-h-0 flex-1 flex-col justify-start gap-2.5 overflow-hidden">
           {unread.slice(0, 4).map((m) => (
             <div key={m.pk} className="flex items-center gap-2.5">
               <Avatar m={m} size={28} />

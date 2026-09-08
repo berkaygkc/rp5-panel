@@ -135,7 +135,9 @@ export default function ShortcutsScreen() {
             <div
               className="grid min-h-0 flex-1 content-start gap-3 overflow-y-auto"
               style={{
-                gridTemplateColumns: `repeat(${colsFor(group.items.length)}, minmax(0, 1fr))`,
+                // Sütun sayısını modülün genişliği belirler: tuş 330 px'in altına
+                // düşmez, sığdığı kadarı yan yana dizilir.
+                gridTemplateColumns: "repeat(auto-fill, minmax(330px, 1fr))",
                 // Sabit tuş yüksekliği: sütunlar farklı sayıda kısayol taşısa da
                 // tuşlar aynı boyda kalır, artan yer alanı boş bırakır.
                 gridAutoRows: "134px",

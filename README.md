@@ -21,12 +21,12 @@ The same dashboard, composed for two other surfaces:
 ## What it does
 
 - **A dashboard that composes itself.** Apps publish widgets in grid units. Each widget reports how urgent its own data is; that is blended with the importance you gave it, and the score buys floor space. A widget with nothing to say takes no room at all, the clock and the weather fill what is left, and they step aside when something happens. Layout changes are calm on purpose: a placement holds for twenty seconds unless something critical needs the room.
-- **Shortcuts.** One tap opens a project in VS Code or an SSH session in Termius or Terminal on the Mac. The toast shows the real result.
+- **Shortcuts.** One tap opens a project in VS Code or an SSH session in Termius or Terminal on the Mac. Each key carries its target and when it last fired; the core counts every successful run, so the widget orders itself by what you actually use. The result appears on the key you pressed.
 - **Claude.** Claude Code sessions on the Mac: running, waiting for you, or closed. Tokens per session, today's usage, and a live event feed for the selected session.
 - **Mail.** Your Spark Desktop inbox, read directly from Spark's local database: accounts, unread counts, message list and preview.
-- **Infra.** Server grid → containers → container dashboard, powered by [Beszel](https://beszel.dev). CPU, memory and network sparklines, container logs and `docker inspect`, with honest failure states.
+- **Infra.** A fleet table where processor, memory and disk line up across every server, powered by [Beszel](https://beszel.dev). The left column names what is broken and jumps straight to it. Drill in for rings, services, metrics, `docker inspect` and logs that collapse repeated lines into one row with a count.
 - **Chat.** Chatwoot (customer conversations) and Mattermost (team chat) in one screen: the conversations assigned to you, who is still waiting for your reply and for how long, plus mentions, direct and group messages. Tap an item for the recent messages. Read-only.
-- **Attention layer.** A Dynamic Island above every screen. `info` and `attention` notices collapse after a few seconds; `urgent` notices persist across restarts until you dismiss them. Anything can post a notice: the agent, built-in monitors, a CI webhook, an uptime service. A notice can carry actions, and tapping one routes the work back to the device that can do it.
+- **Attention layer.** A Dynamic Island above every screen. `info` and `attention` notices shrink to their icon after a few seconds so they cover nothing; `urgent` notices persist across restarts until you dismiss them. Anything can post a notice: the agent, built-in monitors, a CI webhook, an uptime service. A notice can carry actions, and tapping one routes the work back to the device that can do it.
 - **One interface, many surfaces.** The grid is derived from the screen: 4×2 on the strip, 4×3 on a desktop, a single scrolling column on a phone, where the rail lies down and becomes a bottom bar.
 - **Admin panel.** `/admin` from your computer: screens, shortcuts, notice rules, active notices, infra, mail, settings and security. Everything lives in SQLite; the kiosk pulls its configuration from the API, so nothing is hard-coded.
 - **Lock screen.** Server-validated PIN, rate limited, auto-lock after inactivity.
@@ -119,9 +119,11 @@ The kiosk refreshes its configuration every minute and whenever it regains focus
 
 Widgets are the unit of the dashboard. A widget declares which sizes it supports in grid cells, a default importance, and a function that looks at live data and returns how urgent it is right now.
 
+A widget leads with the answer, not a count. The small slot names the conversation that has waited longest or the server that stopped answering; the count goes in the header. Bigger slots show more of the same list rather than a different idea, so a widget reads as a window into its app.
+
 | Size | Cells | Typical use |
 | --- | --- | --- |
-| 1×1 | 1 | one number, one state |
+| 1×1 | 1 | the single most important thing, named |
 | 2×1 | 2 | a row of items |
 | 1×2 | 2 | a vertical stack |
 | 2×2 | 4 | the hero, with controls |
@@ -229,10 +231,10 @@ docs                   Screenshots and the original design brief (Turkish)
 
 The panel targets one device and one distance: a strip display within arm's reach. The rules that follow from that:
 
-- Fixed 1973×426 viewport, no responsive breakpoints. Every layout is designed for exactly this canvas.
+- The strip display, 1973×426, is the reference canvas, but no layout is pinned to it: the grid and the shell are derived from the surface, so a phone or a desktop browser gets the same system in its own shape.
 - Only `transform` and `opacity` animate; no backdrop blur. The Pi's GPU has to hold 60 fps.
 - Gestures track the finger 1:1, hand off velocity to springs, and can be interrupted at any moment. Feedback happens on pointer-down, not on release.
-- Drill-downs follow one standard: grid → list → detail, with the same header, the same back gesture and the same empty and failure states everywhere.
+- Drill-downs follow one standard: overview → list → detail, with the same header, the same back gesture and the same empty and failure states everywhere.
 - Dark and light themes share one token set; the kiosk remembers the user's choice, the admin panel sets the default.
 - The admin panel is a quiet desktop surface: save buttons enable when something changed, deletion is a two-step confirm, and every action reports back in the same words it was named with.
 

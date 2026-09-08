@@ -88,8 +88,8 @@ export function ClaudeSessionsWidget({ size, data }: WidgetProps) {
             <p className="mt-1 line-clamp-2 text-[12.5px] leading-snug">{step(hero)}</p>
           </div>
         )}
-        {/* Kahraman varsa satırlar hemen altına yaslanır; yoksa ortalanır. */}
-        <div className={`flex min-h-0 flex-1 flex-col gap-2 ${hero ? "justify-start" : "justify-center"}`}>
+        {/* Geniş yuvada satırlar kahramanın altına yaslanır; dar yuvada ortalanır. */}
+        <div className={`flex min-h-0 flex-1 flex-col gap-2 overflow-hidden ${hero && size === "2x2" ? "justify-start" : "justify-center"}`}>
           {rows.map((s) => (
             <div key={s.id} className="flex items-center gap-2.5">
               <span
