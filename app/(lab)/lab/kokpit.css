@@ -1,0 +1,982 @@
+/* ──────────────────────────────────────────────────────────────────────────
+ * 4 — KOKPİT
+ *
+ * Bakılan değil kullanılan ekran. Altı panelden kurulu bir akordeon: hiçbiri
+ * seçili değilken hepsi özetini gösterir, birine dokununca o panel yerinde
+ * açılır ve komşuları omurgaya iner. Malzeme CarPlay'in iOS 26 katmanlarından:
+ * koyu zemin, odaklanan uygulamanın rengiyle açan aurora, üst kenarı ışık alan
+ * cam yüzeyler. Hareket yalnızca transform/opacity ve tek bir flex-grow.
+ * ────────────────────────────────────────────────────────────────────────── */
+
+.d-kokpit {
+  --k4-bg: #07080b;
+  --k4-ink: #f2f1ee;
+  --k4-dim: rgba(242, 241, 238, 0.55);
+  --k4-faint: rgba(242, 241, 238, 0.3);
+  --k4-red: #ff453a;
+  --k4-amber: #ffb020;
+  --k4-ease: cubic-bezier(0.32, 0.72, 0, 1);
+  background: var(--k4-bg);
+  color: var(--k4-ink);
+  font-family: var(--lab-grotesk), system-ui, sans-serif;
+}
+
+.k4-root {
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  padding: 14px 16px 14px 0;
+  gap: 12px;
+  overflow: hidden;
+}
+
+/* Odak değişince açan geniş yıkama — panelin ardındaki ışık */
+.k4-aurora {
+  position: absolute;
+  inset: -40% -10% auto -10%;
+  height: 190%;
+  pointer-events: none;
+  background:
+    radial-gradient(48% 60% at 30% 12%, hsl(var(--k4-hue) / 0.3), transparent 62%),
+    radial-gradient(38% 52% at 78% 0%, hsl(var(--k4-hue) / 0.16), transparent 66%);
+  transition: background 700ms ease;
+  animation: k4-bloom 800ms var(--k4-ease) both;
+}
+@keyframes k4-bloom {
+  from {
+    opacity: 0.25;
+    transform: translateY(-10px) scale(1.04);
+  }
+}
+
+/* ── Omurga: saat ve durum, her zaman görünür ── */
+.k4-spine {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  justify-content: center;
+  width: 206px;
+  padding: 0 20px 0 26px;
+  z-index: 1;
+}
+.k4-time {
+  font: 400 52px/0.9 var(--lab-mono), monospace;
+  letter-spacing: -0.05em;
+  font-variant-numeric: tabular-nums;
+}
+.k4-date {
+  margin-top: 8px;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--k4-dim);
+}
+.k4-lamps {
+  display: flex;
+  gap: 5px;
+  margin-top: 16px;
+}
+.k4-lamps i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(242, 241, 238, 0.16);
+}
+.k4-lamps i.on {
+  background: #30d158;
+  box-shadow: 0 0 8px rgba(48, 209, 88, 0.6);
+}
+.k4-weather {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 20px;
+}
+.k4-temp {
+  font: 500 24px/1 var(--lab-grotesk), sans-serif;
+  letter-spacing: -0.02em;
+}
+.k4-wlabel {
+  font-size: 11px;
+  color: var(--k4-dim);
+}
+.k4-verdict {
+  margin-top: auto;
+  padding-top: 18px;
+  font-size: 11.5px;
+  letter-spacing: 0.04em;
+  color: var(--k4-faint);
+}
+
+/* ── Akordeon ── */
+.k4-deck {
+  display: flex;
+  flex: 1;
+  gap: 10px;
+  min-width: 0;
+  z-index: 1;
+}
+
+.k4-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex-basis: 0;
+  min-width: 0;
+  border-radius: 20px;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.085), rgba(255, 255, 255, 0.028) 42%, rgba(255, 255, 255, 0.02));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.07),
+    0 24px 44px -34px #000;
+  transition:
+    flex-grow 460ms var(--k4-ease),
+    background 460ms ease,
+    box-shadow 460ms ease;
+}
+.k4-panel.on {
+  background:
+    linear-gradient(180deg, hsl(var(--hue) / 0.2), hsl(var(--hue) / 0.05) 46%, rgba(255, 255, 255, 0.02));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    inset 0 0 0 1px hsl(var(--hue) / 0.32),
+    0 30px 60px -34px hsl(var(--hue) / 0.5);
+}
+.k4-panel.off {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.018));
+}
+
+/* Odaklanınca yüzeyde bir kez geçen parlama */
+.k4-sheen {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.16) 50%, transparent 65%);
+}
+.k4-panel.on .k4-sheen {
+  animation: k4-sheen 850ms var(--k4-ease) both;
+}
+@keyframes k4-sheen {
+  from {
+    opacity: 1;
+    transform: translateX(-60%);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(60%);
+  }
+}
+
+.k4-hit {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.k4-hit:active {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.k4-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 13px 14px 0;
+  flex: none;
+}
+.k4-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border: 0;
+  border-radius: 10px;
+  background: hsl(var(--hue) / 0.2);
+  color: hsl(var(--hue));
+  cursor: pointer;
+  transition: transform 140ms var(--k4-ease), background 200ms ease;
+}
+.k4-icon:active {
+  transform: scale(0.92);
+}
+.k4-panel.on .k4-icon {
+  background: hsl(var(--hue) / 0.34);
+}
+.k4-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--k4-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.k4-panel.off .k4-name {
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+.k4-badge {
+  flex: none;
+  min-width: 20px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  font: 700 10.5px/1.4 var(--lab-grotesk), sans-serif;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  color: var(--k4-ink);
+}
+.k4-badge.warn {
+  background: var(--k4-amber);
+  color: #1a1300;
+}
+.k4-badge.crit {
+  background: var(--k4-red);
+  color: #fff;
+}
+.k4-back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--k4-ink);
+  cursor: pointer;
+}
+
+.k4-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  padding: 12px 14px 14px;
+}
+
+/* ── Kapalı özet ── */
+.k4-c {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-width: 0;
+  gap: 3px;
+  animation: k4-in 380ms var(--k4-ease) both;
+}
+@keyframes k4-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+.k4-big {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: auto;
+}
+.k4-big-v {
+  font: 500 46px/0.9 var(--lab-grotesk), sans-serif;
+  letter-spacing: -0.045em;
+  font-variant-numeric: tabular-nums;
+}
+.k4-big.crit .k4-big-v {
+  color: var(--k4-red);
+}
+.k4-big.warn .k4-big-v {
+  color: var(--k4-amber);
+}
+.k4-big-u {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--k4-faint);
+}
+.k4-c-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.k4-c-sub,
+.k4-c-line {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--k4-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.k4-c-line {
+  padding: 2px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+.k4-dots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+.k4-dots i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #30d158;
+}
+.k4-dots i.bad {
+  background: var(--k4-red);
+}
+.k4-panel.off .k4-c-title,
+.k4-panel.off .k4-c-sub,
+.k4-panel.off .k4-c-line {
+  opacity: 0;
+}
+.k4-panel.off .k4-big-u {
+  opacity: 0;
+}
+
+/* ── Açık içerik ── */
+.k4-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+  gap: 16px;
+  flex: 1;
+  min-width: 0;
+  animation: k4-in 420ms var(--k4-ease) 60ms both;
+}
+.k4-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.k4-list.two {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px 14px;
+  align-content: start;
+}
+.k4-list.wide {
+  flex: 1;
+  animation: k4-in 420ms var(--k4-ease) 60ms both;
+}
+.k4-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 46px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 160ms ease, transform 120ms var(--k4-ease);
+}
+.k4-row:active {
+  transform: scale(0.99);
+}
+.k4-row.sel {
+  background: rgba(255, 255, 255, 0.08);
+}
+.k4-row.static {
+  cursor: default;
+}
+.k4-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+.k4-row-t {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.k4-row-s {
+  font-size: 11px;
+  color: var(--k4-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.k4-row-x {
+  flex: none;
+  font: 400 10.5px/1 var(--lab-mono), monospace;
+  color: var(--k4-faint);
+}
+.k4-row-x.warn {
+  color: var(--k4-amber);
+}
+.k4-pulse {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--k4-faint);
+}
+.k4-pulse.waiting,
+.k4-pulse.bad {
+  background: var(--k4-amber);
+}
+.k4-pulse.bad {
+  background: var(--k4-red);
+}
+.k4-pulse.working,
+.k4-pulse.ok {
+  background: #30d158;
+  animation: k4-breathe 2.4s ease-in-out infinite;
+}
+@keyframes k4-breathe {
+  50% {
+    opacity: 0.35;
+  }
+}
+.k4-unread {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background: hsl(var(--hue));
+}
+.k4-av {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border-radius: 50%;
+  background: hsl(var(--hue) / 0.22);
+  color: hsl(var(--hue));
+  font-size: 10.5px;
+  font-weight: 700;
+}
+.k4-empty {
+  padding: 20px 10px;
+  font-size: 12px;
+  color: var(--k4-faint);
+  list-style: none;
+}
+
+.k4-bars {
+  display: flex;
+  gap: 4px;
+  align-items: flex-end;
+  height: 26px;
+  flex: none;
+}
+.k4-bar {
+  display: flex;
+  align-items: flex-end;
+  width: 6px;
+  height: 100%;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+.k4-bar span {
+  display: block;
+  width: 100%;
+  border-radius: 3px;
+  transition: height 500ms var(--k4-ease);
+}
+
+.k4-detail {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding-left: 16px;
+  border-left: 1px solid rgba(255, 255, 255, 0.09);
+  animation: k4-in 420ms var(--k4-ease) 120ms both;
+}
+.k4-quote {
+  margin: 0 0 12px;
+  padding-left: 12px;
+  border-left: 2px solid hsl(var(--hue) / 0.6);
+  font-size: 14px;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.k4-d-from {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--k4-dim);
+}
+.k4-d-title {
+  margin: 3px 0 8px;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.k4-d-title.big {
+  font-size: 22px;
+  letter-spacing: -0.025em;
+}
+.k4-d-body {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--k4-dim);
+  display: -webkit-box;
+  -webkit-line-clamp: 6;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.k4-bubble {
+  margin: 10px 0;
+  padding: 10px 12px;
+  border-radius: 14px 14px 14px 4px;
+  background: rgba(255, 255, 255, 0.07);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.k4-meta {
+  display: flex;
+  gap: 22px;
+  margin: auto 0 0;
+  padding-top: 10px;
+}
+.k4-meta dt {
+  font-size: 9.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--k4-faint);
+}
+.k4-meta dd {
+  margin: 3px 0 0;
+  font: 400 13px/1 var(--lab-mono), monospace;
+}
+.k4-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+.k4-btn {
+  height: 38px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--k4-ink);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 130ms var(--k4-ease), background 200ms ease;
+}
+.k4-btn.primary {
+  background: hsl(var(--hue));
+  color: #16110a;
+}
+.k4-btn:active {
+  transform: scale(0.97);
+}
+
+.k4-rings {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+  padding-right: 8px;
+}
+.k4-ring {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.k4-ring svg {
+  transform: rotate(-90deg);
+}
+.k4-ring-v {
+  position: absolute;
+  left: 42px;
+  top: 42px;
+  transform: translate(-50%, -50%);
+  font: 400 14px/1 var(--lab-mono), monospace;
+}
+.k4-ring-l {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--k4-dim);
+}
+
+/* ── Medya ── */
+.k4-media {
+  display: flex;
+  gap: 20px;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  animation: k4-in 420ms var(--k4-ease) 60ms both;
+}
+.k4-media-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+.k4-art {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  border-radius: 16px;
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 18px 40px -22px rgba(0, 0, 0, 0.9);
+}
+.k4-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.k4-eq {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 14px;
+}
+.k4-eq i {
+  width: 3px;
+  height: 40%;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.9);
+  animation: k4-eq 900ms ease-in-out infinite;
+}
+.k4-eq i:nth-child(2) {
+  animation-delay: 140ms;
+}
+.k4-eq i:nth-child(3) {
+  animation-delay: 300ms;
+}
+.k4-eq i:nth-child(4) {
+  animation-delay: 90ms;
+}
+@keyframes k4-eq {
+  50% {
+    height: 100%;
+  }
+}
+.k4-scrub {
+  margin-top: 16px;
+}
+.k4-scrub-track {
+  position: relative;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.14);
+  cursor: pointer;
+}
+.k4-scrub-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 3px;
+  background: hsl(var(--hue));
+}
+.k4-scrub-knob {
+  position: absolute;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  margin-left: -7px;
+  border-radius: 50%;
+  background: #fff;
+  transform: translateY(-50%);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+.k4-scrub-time {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  font: 400 10.5px/1 var(--lab-mono), monospace;
+  color: var(--k4-faint);
+}
+.k4-transport {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+}
+.k4-key {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--k4-ink);
+  cursor: pointer;
+  transition: transform 130ms var(--k4-ease), background 200ms ease;
+}
+.k4-key.big {
+  width: 58px;
+  height: 58px;
+  border-radius: 18px;
+  background: hsl(var(--hue));
+  color: #17070f;
+}
+.k4-key:active {
+  transform: scale(0.94);
+}
+
+/* ── Kısayol tuşları ── */
+.k4-keys {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(178px, 1fr));
+  grid-auto-rows: 74px;
+  align-content: start;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  animation: k4-in 420ms var(--k4-ease) 60ms both;
+}
+.k4-shortcut {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 130ms var(--k4-ease), background 220ms ease, box-shadow 220ms ease;
+}
+.k4-shortcut:active {
+  transform: scale(0.975);
+}
+.k4-shortcut.run {
+  background: hsl(var(--hue) / 0.18);
+}
+.k4-shortcut.ok {
+  box-shadow: inset 0 0 0 1.5px #30d158;
+}
+.k4-shortcut.fail {
+  box-shadow: inset 0 0 0 1.5px var(--k4-red);
+}
+.k4-sc-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex: none;
+  border-radius: 11px;
+  background: hsl(var(--hue) / 0.22);
+  color: hsl(var(--hue));
+}
+.k4-sc-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.k4-sc-label {
+  font-size: 13.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.k4-sc-sub {
+  font-size: 10.5px;
+  color: var(--k4-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .k4-panel,
+  .k4-aurora,
+  .k4-sheen,
+  .k4-c,
+  .k4-split,
+  .k4-keys,
+  .k4-media,
+  .k4-pulse.ok,
+  .k4-eq i {
+    animation: none;
+    transition-duration: 1ms;
+  }
+}
+
+/* ── Kapalı panelin üç bölgesi: sayı, canlı grafik, metin ────────────────── */
+.k4-c {
+  justify-content: flex-start;
+  gap: 0;
+}
+.k4-mid {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  margin: 10px 0;
+  overflow: hidden;
+}
+.k4-mid.center {
+  align-items: center;
+  justify-content: center;
+}
+.k4-mid.graph {
+  justify-content: flex-end;
+}
+.k4-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: none;
+}
+.k4-mini {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  padding: 3px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 11.5px;
+  animation: k4-in 400ms var(--k4-ease) both;
+}
+.k4-mini b {
+  flex: 1;
+  min-width: 0;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.k4-mini em {
+  flex: none;
+  font: 400 10px/1 var(--lab-mono), monospace;
+  font-style: normal;
+  color: var(--k4-faint);
+}
+.k4-quiet {
+  font-size: 11.5px;
+  color: var(--k4-faint);
+}
+.k4-dotk {
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: 2px;
+  background: hsl(var(--hue) / 0.85);
+}
+.k4-av.sm {
+  width: 20px;
+  height: 20px;
+  font-size: 8.5px;
+}
+.k4-spark {
+  width: 100%;
+  height: 64px;
+  display: block;
+}
+.k4-wave {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 56px;
+}
+.k4-wave i {
+  width: 3px;
+  border-radius: 2px;
+  background: hsl(var(--hue) / 0.45);
+}
+.k4-panel.off .k4-mid,
+.k4-panel.off .k4-foot {
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+
+/* Panel gövdesine uygulamanın kendi rengi siner — güverte renkli olsun */
+.k4-panel {
+  background:
+    linear-gradient(180deg, hsl(var(--hue) / 0.13), rgba(255, 255, 255, 0.035) 44%, rgba(255, 255, 255, 0.02));
+}
+
+/* Claude ayrıntısı: soru üstte, son istem ortada, künye altta */
+.k4-prompt {
+  margin: 2px 0 auto;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+}
+.k4-prompt-l {
+  font-size: 9.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--k4-faint);
+}
+.k4-prompt p {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--k4-dim);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.k4-meta {
+  flex-wrap: wrap;
+  gap: 10px 20px;
+}
+.k4-diff {
+  display: flex;
+  gap: 8px;
+}
+.k4-diff .plus {
+  color: #30d158;
+}
+.k4-diff .minus {
+  color: var(--k4-red);
+}
+
+/* Altyapı ayrıntısı: halkalar dar sütun, container listesi geniş */
+.k4-split.infra {
+  grid-template-columns: 216px minmax(0, 1fr);
+}
+
+/* Kısayol tuşları dikeyde ortalanır, tuşlar iri kalır */
+.k4-keys {
+  align-content: center;
+  grid-auto-rows: 88px;
+}

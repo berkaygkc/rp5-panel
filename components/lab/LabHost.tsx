@@ -5,14 +5,16 @@ import { useLabModel } from "./data";
 import Ufuk from "./Ufuk";
 import Pano from "./Pano";
 import Konsol from "./Konsol";
+import Kokpit from "./Kokpit";
 
-export type LabDesign = "ufuk" | "pano" | "konsol";
+export type LabDesign = "ufuk" | "pano" | "konsol" | "kokpit";
 export type Gear = "calm" | "work";
 
 const DESIGNS: { id: LabDesign; key: string; name: string; sub: string }[] = [
   { id: "ufuk", key: "1", name: "Ufuk", sub: "tek çizgi, zaman ekseni" },
   { id: "pano", key: "2", name: "Pano", sub: "tek kuyruk, split-flap" },
   { id: "konsol", key: "3", name: "Konsol", sub: "işlenmiş ön panel" },
+  { id: "kokpit", key: "4", name: "Kokpit", sub: "dokunulan, açılan, iş yapan" },
 ];
 
 const STORE = "rp5-lab-design";
@@ -21,7 +23,7 @@ const CALM_AFTER_MS = 25_000;
 
 export default function LabHost() {
   const model = useLabModel();
-  const [design, setDesign] = useState<LabDesign>("ufuk");
+  const [design, setDesign] = useState<LabDesign>("kokpit");
   const [override, setOverride] = useState<Gear | null>(null);
   const [touchedAt, setTouchedAt] = useState(0);
   const [ready, setReady] = useState(false);
@@ -90,6 +92,7 @@ export default function LabHost() {
       {design === "ufuk" && <Ufuk model={model} gear={gear} />}
       {design === "pano" && <Pano model={model} gear={gear} />}
       {design === "konsol" && <Konsol model={model} gear={gear} />}
+      {design === "kokpit" && <Kokpit model={model} gear={gear} />}
 
       {/* Seçici bilerek hiçbir tasarım diline ait değil: karşılaştırmayı bozmasın */}
       <nav className="lab-switch" aria-label="Tasarım yönü">

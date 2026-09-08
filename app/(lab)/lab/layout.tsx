@@ -3,6 +3,7 @@ import { Archivo, Doto, Martian_Mono } from "next/font/google";
 import localFont from "next/font/local";
 import "../../globals.css";
 import "./lab.css";
+import "./kokpit.css";
 
 /* Üç tasarım yönünün üç ayrı sesi var; hepsi burada yüklenir, her yön
  * yalnızca kendi ailesini kullanır. */
