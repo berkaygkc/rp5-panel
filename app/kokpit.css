@@ -188,6 +188,9 @@
 .k4-hit {
   position: absolute;
   inset: 0;
+  /* Başlık ve gövde katmanının üstünde durmalı: kapalı panelde dokunulan
+   * yüzey burasıdır, altında kalırsa panel açılmaz. */
+  z-index: 3;
   border: 0;
   background: transparent;
   cursor: pointer;
