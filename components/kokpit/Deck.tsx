@@ -5,11 +5,12 @@ import { Mail, MessagesSquare, Music2, Server, Sparkles, Zap, type LucideIcon } 
 import { ChevronLeft } from "lucide-react";
 import PanelArt from "./PanelArt";
 import PanelFull, { Art, Spark, fmtClock, initials } from "./PanelFull";
-import { APP_HUE, APP_IDS, APP_NAME, type AppId } from "./ids";
+import { APP_HUE, APP_IDS, APP_NAME, limitColor, type AppId } from "./ids";
 import { runShortcutOnAgent } from "@/lib/data/runShortcut";
 import { useMedia } from "@/lib/data/useMedia";
 import { useShortcuts } from "@/lib/data/useShortcuts";
 import { waited, type LabModel } from "@/lib/kokpit/model";
+import type { Usage } from "@/lib/types/claude";
 
 /**
  * Güverte — altı panelin ızgarası.
@@ -245,8 +246,9 @@ function Compact({
           ))}
         </div>
         <div className="k4-foot">
+          <UsageBar usage={os.claude.usage} />
           <p className="k4-c-title">{hero?.project ?? "sessiz"}</p>
-          <p className="k4-c-sub">{waiting.length ? "sizi bekliyor" : "çalışıyor"}</p>
+          {!half && <p className="k4-c-sub">{waiting.length ? "sizi bekliyor" : "çalışıyor"}</p>}
         </div>
       </div>
     );
@@ -349,6 +351,31 @@ function Compact({
         <p className="k4-c-sub">dokun, çalışsın</p>
       </div>
     </div>
+  );
+}
+
+/**
+ * Plan şeridi — kapalı kartta bile görünmesi gereken tek sayı.
+ *
+ * Oturum limiti bitiyorsa bunu panele dokunmadan görmek gerekir; o yüzden
+ * ince bir çubuk olarak özetin dibinde durur ve dar panelde de kalır.
+ */
+function UsageBar({ usage }: { usage: Usage }) {
+  const limit = usage.limits.find((l) => l.id === "session") ?? usage.limits[0];
+  if (!limit) return null;
+  const p = Math.max(0, Math.min(100, Math.round(limit.percent)));
+  return (
+    <span className="k4-usage">
+      <span className="k4-usage-head">
+        <span className="k4-usage-l">plan · {limit.label}</span>
+        <span className="k4-usage-v" style={{ color: limitColor(p) }}>
+          %{p}
+        </span>
+      </span>
+      <span className="k4-usage-track">
+        <span style={{ width: `${Math.max(2, p)}%`, background: limitColor(p) }} />
+      </span>
+    </span>
   );
 }
 
