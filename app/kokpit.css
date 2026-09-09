@@ -1679,3 +1679,144 @@
 .k4-media.quiet .k4-transport {
   justify-content: center;
 }
+
+/* ── Plan kullanımı ─────────────────────────────────────────────────────
+ * Kapalı kartta ince bir şerit, açık panelde kendi sütunu. Oturum limiti
+ * dolmak üzereyse bunu panele dokunmadan görmek gerekir. */
+.k4-usage {
+  display: block;
+  margin-bottom: 8px;
+}
+.k4-usage-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.k4-usage-l {
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--k4-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.k4-usage-v {
+  flex: none;
+  font: 600 12px/1 var(--lab-grotesk, ui-sans-serif), sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+.k4-usage-track {
+  display: block;
+  height: 3px;
+  margin-top: 4px;
+  border-radius: 2px;
+  background: var(--k4-track);
+  overflow: hidden;
+}
+.k4-usage-track span {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  transition: width 600ms var(--k4-ease);
+}
+
+.k4-split.claude {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr) 238px;
+}
+.k4-plan {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding-left: 16px;
+  border-left: 1px solid rgba(255, 255, 255, 0.09);
+}
+.k4-plan-h {
+  font-size: 9.5px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--k4-faint);
+}
+.k4-plan-ring {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.k4-plan-side {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.k4-plan-side b {
+  font-size: 12.5px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.k4-plan-side em,
+.k4-plan-limit em {
+  font-size: 10.5px;
+  font-style: normal;
+  line-height: 1.35;
+  color: var(--k4-faint);
+}
+.k4-plan-limit {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.k4-plan-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 11.5px;
+  color: var(--k4-dim);
+}
+.k4-plan-row b {
+  flex: none;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--k4-ink);
+}
+.k4-plan-track {
+  display: block;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--k4-track);
+  overflow: hidden;
+}
+.k4-plan-track span {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  transition: width 600ms var(--k4-ease);
+}
+.k4-plan-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+[data-theme="light"] .k4-plan,
+[data-theme="light"] .k4-plan-foot {
+  border-color: rgba(22, 23, 27, 0.12);
+}
+
+@media (max-width: 900px) {
+  .k4-split.claude {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .k4-plan {
+    padding: 12px 0 0;
+    border-left: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.09);
+  }
+}

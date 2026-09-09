@@ -20,3 +20,7 @@ export const APP_NAME: Record<AppId, string> = {
   media: "Medya",
   shortcuts: "Kısayollar",
 };
+
+/** Plan limiti rengi: %85 üstü kırmızı, %60 üstü kehribar, altı uygulamanın rengi */
+export const limitColor = (p: number) =>
+  p >= 85 ? "var(--k4-red)" : p >= 60 ? "var(--k4-amber)" : "hsl(var(--hue))";

@@ -9,9 +9,11 @@ import { playbackPosition, type useMedia } from "@/lib/data/useMedia";
 import type { useShortcuts } from "@/lib/data/useShortcuts";
 import { fmtAgo } from "@/lib/format";
 import { waited, type LabModel } from "@/lib/kokpit/model";
+import { fmtReset } from "@/lib/usageTime";
+import type { ClaudeStats, Usage } from "@/lib/types/claude";
 import { isProblem, type InfraContainer, type InfraSystem, type LogLine } from "@/lib/types/infra";
 import type { MediaState, Track } from "@/lib/types/media";
-import type { AppId } from "./ids";
+import { limitColor, type AppId } from "./ids";
 
 /**
  * Açılmış panelin içi.
@@ -45,7 +47,7 @@ export default function PanelFull({
     const live = os.claude.sessions.filter((s) => s.status !== "closed");
     const sel = live.find((s) => s.id === sub) ?? live[0] ?? null;
     return (
-      <div className="k4-split">
+      <div className="k4-split claude">
         <ul className="k4-list">
           {live.map((s) => (
             <li key={s.id}>
@@ -104,6 +106,7 @@ export default function PanelFull({
             </div>
           </div>
         )}
+        <Plan usage={os.claude.usage} stats={os.claude.stats} now={os.now} />
       </div>
     );
   }
@@ -299,6 +302,65 @@ export default function PanelFull({
   );
 }
 
+/* ── Claude: plan kullanımı ───────────────────────────────────────────── */
+
+/**
+ * Plan sütunu. Birincil limit halkada, ötekiler çubukta, altında planın iki
+ * penceresi ve bugünün toplamı. Sıfırlanma zamanı ham metin olarak gelir,
+ * `fmtReset` onu geri sayıma çevirir.
+ */
+function Plan({ usage, stats, now }: { usage: Usage; stats: ClaudeStats; now: number }) {
+  const primary = usage.limits.find((l) => l.id === "session") ?? usage.limits[0];
+  const rest = usage.limits.filter((l) => l !== primary);
+
+  return (
+    <div className="k4-plan">
+      <span className="k4-plan-h">plan</span>
+      {!primary ? (
+        <p className="k4-empty">{usage.error ? `okunamadı: ${usage.error}` : "ölçülüyor"}</p>
+      ) : (
+        <>
+          <div className="k4-plan-ring">
+            <Ring v={primary.percent} label="" tone={limitColor(primary.percent)} />
+            <span className="k4-plan-side">
+              <b>{primary.label}</b>
+              <em>{fmtReset(primary.resetsAt, now)}</em>
+            </span>
+          </div>
+          {rest.map((l) => (
+            <div key={l.id} className="k4-plan-limit">
+              <span className="k4-plan-row">
+                <span>{l.label}</span>
+                <b style={{ color: limitColor(l.percent) }}>%{Math.round(l.percent)}</b>
+              </span>
+              <span className="k4-plan-track">
+                <span style={{ width: `${Math.max(2, Math.min(100, l.percent))}%`, background: limitColor(l.percent) }} />
+              </span>
+              <em>{fmtReset(l.resetsAt, now)}</em>
+            </div>
+          ))}
+        </>
+      )}
+      <div className="k4-plan-foot">
+        {usage.windows.map((w) => (
+          <span key={w.id} className="k4-plan-row">
+            <span>{w.label}</span>
+            <b>
+              {w.requests.toLocaleString("tr-TR")} istek · {w.sessions} oturum
+            </b>
+          </span>
+        ))}
+        <span className="k4-plan-row">
+          <span>bugün</span>
+          <b>
+            {fmtTok(stats.today.output)} çıktı{stats.todayCostUsd > 0 ? ` · ~$${stats.todayCostUsd.toFixed(2)}` : ""}
+          </b>
+        </span>
+      </div>
+    </div>
+  );
+}
+
 /* ── Altyapı seviye 2: sunucu ─────────────────────────────────────────── */
 
 function ServerDetail({ sys, onOpen }: { sys: InfraSystem; onOpen: (c: InfraContainer) => void }) {
@@ -476,10 +538,11 @@ function Bar({ v }: { v: number }) {
   );
 }
 
-function Ring({ v, label }: { v: number; label: string }) {
+function Ring({ v, label, tone }: { v: number; label: string; tone?: string }) {
   const p = Math.max(0, Math.min(100, v));
   const r = 34;
   const c = 2 * Math.PI * r;
+  const color = tone ?? (p >= 90 ? "var(--k4-red)" : p >= 75 ? "var(--k4-amber)" : "hsl(var(--hue))");
   return (
     <div className="k4-ring">
       <svg width={84} height={84}>
@@ -489,7 +552,7 @@ function Ring({ v, label }: { v: number; label: string }) {
           cy={42}
           r={r}
           fill="none"
-          stroke={p >= 90 ? "var(--k4-red)" : p >= 75 ? "var(--k4-amber)" : "hsl(var(--hue))"}
+          stroke={color}
           strokeWidth={7}
           strokeLinecap="round"
           strokeDasharray={c}
@@ -498,7 +561,7 @@ function Ring({ v, label }: { v: number; label: string }) {
         />
       </svg>
       <span className="k4-ring-v">%{Math.round(p)}</span>
-      <span className="k4-ring-l">{label}</span>
+      {label && <span className="k4-ring-l">{label}</span>}
     </div>
   );
 }
