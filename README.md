@@ -184,15 +184,28 @@ Enter both under Admin → Chat, which includes a connection test and the exact 
 The core is a Next.js app with a custom server, so HTTP and the `/ws` socket share one port. It runs anywhere Node runs.
 
 ```bash
-cp .env.local.example .env      # NOTICE_TOKEN and ADMIN_SESSION_SECRET at minimum
+cp .env.local.example .env.local   # NOTICE_TOKEN and ADMIN_SESSION_SECRET at minimum
 docker compose up -d --build
-docker compose exec core npx prisma db push
-docker compose exec core node prisma/seed.cjs
 ```
+
+That is the whole install. The container applies the schema and seeds the defaults on first boot, keeps the database in `./.data` outside the image, and reports healthy once `/api/config` answers. An address in `.env.local` that points at `localhost` — a Beszel hub on the same machine, say — is rewritten to `host.docker.internal` on the way in, because inside a container `localhost` is the container.
 
 Put it behind a reverse proxy with TLS and make sure the proxy forwards WebSocket upgrades on `/ws`. Then open the console, add a device for your Mac, and paste the token into the agent's `.env` next to `PANEL_URL`. The agent dials out, so it works from a laptop on any network.
 
-To keep the agent running, copy `clients/mac-agent/deploy/com.rp5.agent.plist` into `~/Library/LaunchAgents`, fix the paths inside and `launchctl load` it.
+### The agent is not containerised
+
+It cannot be. Media control, shortcuts, mail and Claude sessions are read through AppleScript, MediaRemote and files under your home directory; none of that exists inside Docker's Linux VM. The agent runs natively as a launchd service instead, managed by one script:
+
+```bash
+./scripts/agent install     # build, write the plist, load it, start at login
+./scripts/agent status      # pid, uptime, core connection, last log lines
+./scripts/agent stop|start|restart|logs
+./scripts/agent uninstall
+```
+
+`install` resolves the absolute path of your current `node` and writes it into the plist, because launchd starts with a bare environment and will not find a version manager's shims. The service reads `clients/mac-agent/.env` from its working directory and logs to `clients/mac-agent/logs/`.
+
+One permission needs granting by hand: detecting which app is in front uses System Events, which requires Accessibility. Until `node` is ticked under System Settings → Privacy & Security → Accessibility, that one feature stays dark — the log says `-1719` — and everything else works.
 
 ## Configuration
 

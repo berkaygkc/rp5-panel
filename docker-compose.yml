@@ -1,23 +1,30 @@
-# Çekirdeği bir sunucuya kurmak için:
-#   cp .env.local.example .env && docker compose up -d --build
-#   docker compose exec core npx prisma db push && docker compose exec core node prisma/seed.cjs
+# Çekirdeği kaldırmak için:
+#   docker compose up -d --build
+#
+# Şema ve varsayılanlar açılışta kendiliğinden kurulur (docker/entrypoint.sh).
+# Veritabanı ./.data içinde, konteynerin dışında durur — imajı silmek veriyi silmez.
 #
 # Ters vekil (nginx, Caddy, Cloudflare) arkasına koyarken WebSocket yükseltmesine
 # izin verin: /ws yolu Upgrade ve Connection başlıklarını iletmelidir.
 services:
   core:
     build: .
+    image: rp5-core
     container_name: rp5-core
     restart: unless-stopped
+    # Dışarıdaki port PORT ile değiştirilebilir: PORT=3013 docker compose up -d
     ports:
-      - "3012:3012"
+      - "${PORT:-3012}:3012"
     volumes:
-      - ./data:/data
+      # Panelin gerçek veritabanı ve bildirimleri
+      - ./.data:/data
+    # Konteynerden Mac'teki servislere (Beszel gibi) ulaşmak için
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    env_file:
+      # NOTICE_TOKEN, ADMIN_SESSION_SECRET, BESZEL_* buradan gelir
+      - .env.local
     environment:
-      PORT: 3012
       PANEL_DATA_DIR: /data
-      NOTICE_TOKEN: ${NOTICE_TOKEN}
-      ADMIN_SESSION_SECRET: ${ADMIN_SESSION_SECRET}
-      BESZEL_URL: ${BESZEL_URL:-}
-      BESZEL_EMAIL: ${BESZEL_EMAIL:-}
-      BESZEL_PASSWORD: ${BESZEL_PASSWORD:-}
+      # Pi ve telefon LAN'dan bağlanır; alt ağ farklıysa burayı değiştirin
+      PANEL_LAN_SUBNET: ${PANEL_LAN_SUBNET:-192.168.1}

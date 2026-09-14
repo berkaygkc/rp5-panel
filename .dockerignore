@@ -1,0 +1,27 @@
+# İmaja yalnızca çekirdeğin derlenmesi için gerekenler girer.
+# En kritik satır node_modules: Mac'te derlenmiş better_sqlite3.node
+# (darwin-arm64) Linux'ta çalışmaz ve konteynerdeki doğru derlemenin
+# üstüne yazardı.
+node_modules
+**/node_modules
+.next
+dist
+
+# Veri ve sırlar imaja gömülmez; veri birim olarak bağlanır
+.data
+data
+.env
+.env.*
+!.env.local.example
+
+# Depoya ait, çalıştırmaya ait olmayanlar
+.git
+.gitignore
+.github
+docs
+scripts
+clients
+.claude
+.vscode
+*.md
+!README.md

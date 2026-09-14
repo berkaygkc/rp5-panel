@@ -1,0 +1,164 @@
+#!/usr/bin/env bash
+#
+# Mac ajanını launchd servisi olarak yönetir.
+#
+#   ./scripts/agent install     servisi kur ve başlat (açılışta da başlar)
+#   ./scripts/agent start|stop|restart
+#   ./scripts/agent status      durum, PID, çekirdek bağlantısı, son satırlar
+#   ./scripts/agent logs        canlı log
+#   ./scripts/agent build       TypeScript'i derle
+#   ./scripts/agent uninstall   servisi kaldır (dosyalar kalır)
+#
+# Ajan neden konteynerde değil: medya, kısayollar, posta ve Claude oturumları
+# macOS'un AppleScript ve MediaRemote arayüzlerinden okunur. Docker'ın Linux
+# sanal makinesinde bunların hiçbiri yoktur.
+set -euo pipefail
+
+LABEL="com.rp5.agent"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+AGENT="$ROOT/clients/mac-agent"
+PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
+LOGS="$AGENT/logs"
+DOMAIN="gui/$(id -u)"
+
+say() { printf '\033[1m%s\033[0m\n' "$*"; }
+die() { printf '\033[31m%s\033[0m\n' "$*" >&2; exit 1; }
+
+loaded() { launchctl print "$DOMAIN/$LABEL" >/dev/null 2>&1; }
+agent_pid() { launchctl print "$DOMAIN/$LABEL" 2>/dev/null | awk '/^\tpid = /{print $3; exit}'; }
+
+needs_build() {
+  [ -f "$AGENT/dist/index.js" ] || return 0
+  [ -n "$(find "$AGENT/src" -name '*.ts' -newer "$AGENT/dist/index.js" -print -quit 2>/dev/null)" ]
+}
+
+build() {
+  [ -d "$AGENT/node_modules" ] || { say "bağımlılıklar kuruluyor…"; (cd "$AGENT" && npm ci); }
+  say "derleniyor…"
+  (cd "$AGENT" && npm run build)
+}
+
+write_plist() {
+  local node_bin node_dir
+  node_bin="$(command -v node)" || die "node bulunamadı"
+  node_dir="$(dirname "$node_bin")"
+  mkdir -p "$LOGS" "$(dirname "$PLIST")"
+
+  # launchd temiz bir ortam verir: PATH'i burada kurmak zorundayız. osascript
+  # /usr/bin'de, media-control genelde Homebrew'da. CLAUDE_* değişkenleri de
+  # doğal olarak aktarılmaz — ajanın açtığı Claude oturumlarının dökümü bu
+  # sayede kapanmaz.
+  cat > "$PLIST" <<PLIST_EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- scripts/agent tarafından üretildi; elle düzenlemeyin -->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>$LABEL</string>
+  <key>WorkingDirectory</key>
+  <string>$AGENT</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>$node_bin</string>
+    <string>$AGENT/dist/index.js</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>$node_dir:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <key>NODE_ENV</key>
+    <string>production</string>
+  </dict>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>ThrottleInterval</key>
+  <integer>5</integer>
+  <key>StandardOutPath</key>
+  <string>$LOGS/agent.log</string>
+  <key>StandardErrorPath</key>
+  <string>$LOGS/agent.err</string>
+</dict>
+</plist>
+PLIST_EOF
+}
+
+cmd_install() {
+  [ -f "$AGENT/.env" ] || say "uyarı: $AGENT/.env yok — DEVICE_TOKEN olmadan çekirdek bağlantıyı reddeder"
+  needs_build && build
+  loaded && launchctl bootout "$DOMAIN/$LABEL" 2>/dev/null || true
+  write_plist
+  launchctl bootstrap "$DOMAIN" "$PLIST"
+  say "kuruldu ve başlatıldı → $PLIST"
+  echo "İlk çalıştırmada macOS otomasyon izni sorabilir; izin verin, yoksa medya"
+  echo "ve kısayol komutları sessizce boş döner."
+  sleep 2
+  cmd_status
+}
+
+cmd_uninstall() {
+  loaded && launchctl bootout "$DOMAIN/$LABEL" || true
+  rm -f "$PLIST"
+  say "servis kaldırıldı (kod ve loglar duruyor)"
+}
+
+cmd_start() {
+  [ -f "$PLIST" ] || die "servis kurulu değil — önce: ./scripts/agent install"
+  needs_build && build
+  loaded || launchctl bootstrap "$DOMAIN" "$PLIST"
+  launchctl kickstart "$DOMAIN/$LABEL" >/dev/null 2>&1 || true
+  say "başlatıldı"
+}
+
+cmd_stop() {
+  loaded || { say "zaten durmuş"; return 0; }
+  launchctl bootout "$DOMAIN/$LABEL"
+  say "durduruldu (kurulu kalır, ./scripts/agent start ile geri gelir)"
+}
+
+cmd_restart() {
+  [ -f "$PLIST" ] || die "servis kurulu değil — önce: ./scripts/agent install"
+  needs_build && { build; write_plist; }
+  if loaded; then launchctl kickstart -k "$DOMAIN/$LABEL" >/dev/null; else launchctl bootstrap "$DOMAIN" "$PLIST"; fi
+  say "yeniden başlatıldı"
+}
+
+cmd_status() {
+  if [ ! -f "$PLIST" ]; then say "servis: kurulu değil"; return 0; fi
+  if ! loaded; then say "servis: kurulu ama durdurulmuş"; return 0; fi
+
+  local pid; pid="$(agent_pid || true)"
+  if [ -z "$pid" ] || [ "$pid" = "0" ]; then
+    say "servis: yüklü, süreç yok (çöküp yeniden başlıyor olabilir)"
+  else
+    say "servis: çalışıyor · PID $pid"
+    local up; up="$(ps -o etime= -p "$pid" 2>/dev/null | tr -d ' ')"
+    [ -n "$up" ] && echo "  süredir ayakta: $up"
+    local conn
+    conn="$(lsof -a -p "$pid" -i -n -P 2>/dev/null | awk '/ESTABLISHED/{print $9; exit}')"
+    if [ -n "$conn" ]; then echo "  çekirdek bağlantısı: $conn"; else echo "  çekirdek bağlantısı: yok"; fi
+  fi
+  [ -f "$LOGS/agent.log" ] && { echo; echo "son satırlar:"; tail -n 6 "$LOGS/agent.log" | sed 's/^/  /'; }
+  if [ -s "$LOGS/agent.err" ]; then echo; echo "hata akışı (son 4):"; tail -n 4 "$LOGS/agent.err" | sed 's/^/  /'; fi
+  return 0
+}
+
+cmd_logs() {
+  mkdir -p "$LOGS"; touch "$LOGS/agent.log" "$LOGS/agent.err"
+  tail -n 40 -F "$LOGS/agent.log" "$LOGS/agent.err"
+}
+
+case "${1:-status}" in
+  install)   cmd_install ;;
+  uninstall) cmd_uninstall ;;
+  start)     cmd_start ;;
+  stop)      cmd_stop ;;
+  restart)   cmd_restart ;;
+  status)    cmd_status ;;
+  logs)      cmd_logs ;;
+  build)     build ;;
+  -h|--help|help)
+    sed -n '3,14p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' ;;
+  *) die "bilinmeyen komut: $1 — ./scripts/agent help" ;;
+esac
