@@ -38,10 +38,29 @@ build() {
   (cd "$AGENT" && npm run build)
 }
 
+# Ajanın dışarıdan çağırdığı araçlar. Nerede kurulu olduklarını varsaymak yerine
+# kurulum anında bulunurlar: `claude` kullanıcıya göre ~/.local/bin'de, npm
+# global dizininde ya da başka bir yerde olabilir.
+TOOLS="claude media-control nowplaying-cli code"
+
+# Servisin PATH'i: node + bulunan araçların dizinleri + alışıldık yollar.
+# launchd çıplak bir ortamla başlar; buraya yazılmayan hiçbir şey bulunamaz ve
+# hata "spawn <araç> ENOENT" olarak paneldeki karta düşer.
+service_path() {
+  {
+    dirname "$(command -v node)"
+    for tool in $TOOLS; do
+      bin="$(command -v "$tool" 2>/dev/null)" || continue
+      [ -x "$bin" ] && dirname "$bin"
+    done
+    printf '%s\n' "$HOME/.local/bin" /opt/homebrew/bin /usr/local/bin /usr/bin /bin /usr/sbin /sbin
+  } | awk 'NF && !seen[$0]++' | paste -sd: -
+}
+
 write_plist() {
-  local node_bin node_dir
+  local node_bin node_path
   node_bin="$(command -v node)" || die "node bulunamadı"
-  node_dir="$(dirname "$node_bin")"
+  node_path="$(service_path)"
   mkdir -p "$LOGS" "$(dirname "$PLIST")"
 
   # launchd temiz bir ortam verir: PATH'i burada kurmak zorundayız. osascript
@@ -65,7 +84,7 @@ write_plist() {
   <key>EnvironmentVariables</key>
   <dict>
     <key>PATH</key>
-    <string>$node_dir:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <string>$node_path</string>
     <key>NODE_ENV</key>
     <string>production</string>
   </dict>
@@ -84,8 +103,18 @@ write_plist() {
 PLIST_EOF
 }
 
+report_tools() {
+  local missing=""
+  for tool in $TOOLS; do
+    command -v "$tool" >/dev/null 2>&1 || missing="$missing $tool"
+  done
+  [ -n "$missing" ] && say "uyarı: bulunamayan araçlar:$missing — ilgili kartlar boş kalır"
+  return 0
+}
+
 cmd_install() {
   [ -f "$AGENT/.env" ] || say "uyarı: $AGENT/.env yok — DEVICE_TOKEN olmadan çekirdek bağlantıyı reddeder"
+  report_tools
   needs_build && build
   loaded && launchctl bootout "$DOMAIN/$LABEL" 2>/dev/null || true
   write_plist
@@ -119,8 +148,13 @@ cmd_stop() {
 
 cmd_restart() {
   [ -f "$PLIST" ] || die "servis kurulu değil — önce: ./scripts/agent install"
-  needs_build && { build; write_plist; }
-  if loaded; then launchctl kickstart -k "$DOMAIN/$LABEL" >/dev/null; else launchctl bootstrap "$DOMAIN" "$PLIST"; fi
+  needs_build && build
+  # plist her seferinde tazelenir: node ya da araçların yeri değişmiş olabilir.
+  # launchd ortam değişkenlerini yalnızca yükleme anında okur, bu yüzden
+  # kickstart yetmez; çıkarıp yeniden yüklemek gerekir.
+  write_plist
+  loaded && launchctl bootout "$DOMAIN/$LABEL" 2>/dev/null || true
+  launchctl bootstrap "$DOMAIN" "$PLIST"
   say "yeniden başlatıldı"
 }
 
@@ -139,6 +173,7 @@ cmd_status() {
     conn="$(lsof -a -p "$pid" -i -n -P 2>/dev/null | awk '/ESTABLISHED/{print $9; exit}')"
     if [ -n "$conn" ]; then echo "  çekirdek bağlantısı: $conn"; else echo "  çekirdek bağlantısı: yok"; fi
   fi
+  echo "  araç yolu: $(service_path | cut -c1-72)…"
   [ -f "$LOGS/agent.log" ] && { echo; echo "son satırlar:"; tail -n 6 "$LOGS/agent.log" | sed 's/^/  /'; }
   if [ -s "$LOGS/agent.err" ]; then echo; echo "hata akışı (son 4):"; tail -n 4 "$LOGS/agent.err" | sed 's/^/  /'; fi
   return 0

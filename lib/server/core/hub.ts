@@ -155,8 +155,15 @@ class Hub {
     });
     console.log(`[core] ${role} bağlandı: ${conn.name} (${conn.remote})${conn.capabilities.size ? ` — ${[...conn.capabilities].join(", ")}` : ""}`);
 
-    // Sağlayıcı geldiyse, hâlihazırda izlenen alanlar için izlemeyi başlat
-    if (role === "provider") this.syncWatches();
+    // Sağlayıcı geldiyse, hâlihazırda izlenen alanlar için izlemeyi başlat.
+    // Önce izleme durumu sıfırlanır: yeni süreç hiçbir alanı izlemiyor, ama
+    // santral eskisinden kalma "açık" kaydını tutuyorsa syncWatches değişiklik
+    // görmez ve izlemeyi hiç göndermez — ajan yeniden başladığında Claude
+    // kullanımı ve posta sessizce akmayı bırakır.
+    if (role === "provider") {
+      this.watchState.clear();
+      this.syncWatches();
+    }
     this.publishPresence();
   }
 

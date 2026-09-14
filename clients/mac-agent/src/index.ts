@@ -205,8 +205,12 @@ setInterval(() => {
 void refreshAgentConfig();
 setInterval(() => void refreshAgentConfig(), 60_000);
 
-// Plan kullanımı: açılışta bir kez ölç, sonra abone varken 5 dakikada bir tazele
-void usage.refresh(0);
+// Plan kullanımı: açılışta bir kez ölç, sonra abone varken 5 dakikada bir tazele.
+// İlk ölçüm de yayınlanır — aksi halde izleme açıldığında refresh() önbelleği
+// taze bulup null döner ve panel boş anlık görüntüde takılı kalır.
+void usage.refresh(0).then((u) => {
+  if (u) core.publish("claude.usage", u);
+});
 setInterval(() => {
   if (!wantsClaude()) return;
   void usage.refresh(USAGE_REFRESH_MS).then((u) => {
