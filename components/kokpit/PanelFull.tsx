@@ -81,7 +81,8 @@ export default function PanelFull({
               <div className="k4-delegating">
                 <AgentChip count={sel.agents} label={sel.agentLabel} />
                 <span>{sel.agentLabel ?? "alt ajan çalışıyor"}</span>
-                <b>{sel.agents > 1 ? `${sel.agents} alt ajan` : "alt ajanda"}</b>
+                {/* Sayı rozette duruyor; burada tekrarlamak yerine nerede olduğunu söyle */}
+                <b>alt ajanda</b>
               </div>
             )}
             <p className="k4-quote">

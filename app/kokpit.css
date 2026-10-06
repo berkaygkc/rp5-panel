@@ -1830,24 +1830,25 @@
 /* ── Alt ajan rozeti ────────────────────────────────────────────────────
  * Oturum durmuş değil, işi devretmiş. Nabzı atar çünkü o sırada gerçekten
  * bir şey çalışıyordur; renk uygulamanın kendi tonundan gelir. */
+/* Yalnızca rakam taşır; tek hanede de yuvarlak kalsın diye en az genişlik var */
 .k4-agent {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
+  justify-content: center;
   flex: none;
+  min-width: 20px;
   padding: 2px 6px;
   border-radius: 999px;
-  background: hsl(var(--hue) / 0.2);
+  background: hsl(var(--hue) / 0.22);
   color: hsl(var(--hue));
+  font: 700 13px/1 var(--lab-grotesk, ui-sans-serif), sans-serif;
+  font-variant-numeric: tabular-nums;
   animation: k4-agent-pulse 2.2s ease-in-out infinite;
 }
 .k4-agent.sm {
-  padding: 1px 4px;
-  gap: 2px;
-}
-.k4-agent b {
-  font: 700 9.5px/1 var(--lab-grotesk, ui-sans-serif), sans-serif;
-  font-variant-numeric: tabular-nums;
+  min-width: 17px;
+  padding: 2px 5px;
+  font-size: 11.5px;
 }
 @keyframes k4-agent-pulse {
   50% {

@@ -1,7 +1,5 @@
 "use client";
 
-import { GitBranch } from "lucide-react";
-
 /**
  * Alt ajan rozeti.
  *
@@ -9,6 +7,10 @@ import { GitBranch } from "lucide-react";
  * bırakır ve panel onu "durmuş" sanırdı. Bu rozet o anı temsil eder: iş
  * duruyor değil, dallanmış. Nabzı atar, çünkü o sırada gerçekten bir şey
  * çalışıyordur.
+ *
+ * Üstünde yalnızca çalışan alt ajan sayısı yazar. Şerit iki metre öteden
+ * okunuyor; oraya sığan bir simge o uzaklıkta leke olmaktan öteye geçmiyordu,
+ * rakam ise geçiyor.
  */
 export function AgentChip({
   count,
@@ -22,9 +24,12 @@ export function AgentChip({
 }) {
   if (count < 1) return null;
   return (
-    <span className={`k4-agent ${small ? "sm" : ""}`} title={label ?? undefined} aria-label={`${count} alt ajan çalışıyor`}>
-      <GitBranch size={small ? 9 : 11} strokeWidth={2.5} />
-      {count > 1 && <b>{count}</b>}
+    <span
+      className={`k4-agent ${small ? "sm" : ""}`}
+      title={label ?? undefined}
+      aria-label={`${count} alt ajan çalışıyor`}
+    >
+      {count}
     </span>
   );
 }
