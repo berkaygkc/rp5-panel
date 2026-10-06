@@ -3,6 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import { Mail, MessagesSquare, Music2, Server, Sparkles, Zap, type LucideIcon } from "lucide-react";
 import { ChevronLeft } from "lucide-react";
+import { AgentChip } from "./AgentChip";
 import PanelArt from "./PanelArt";
 import PanelFull, { Art, Spark, fmtClock, initials } from "./PanelFull";
 import { APP_HUE, APP_IDS, APP_NAME, limitColor, type AppId } from "./ids";
@@ -232,6 +233,7 @@ function Compact({
   if (app === "claude") {
     const waiting = os.claude.sessions.filter((s) => s.status === "waiting");
     const live = os.claude.sessions.filter((s) => s.status !== "closed");
+    const delegating = live.filter((s) => s.agents > 0);
     const hero = waiting[0] ?? live[0];
     return (
       <div className="k4-c">
@@ -241,14 +243,26 @@ function Compact({
             <span key={s.id} className="k4-mini">
               <i className={`k4-pulse ${s.status}`} />
               <b>{s.project}</b>
-              <em>{s.status === "waiting" ? "soruyor" : "çalışıyor"}</em>
+              {s.agents > 0 ? (
+                <AgentChip count={s.agents} label={s.agentLabel} small />
+              ) : (
+                <em>{s.status === "waiting" ? "soruyor" : "çalışıyor"}</em>
+              )}
             </span>
           ))}
         </div>
         <div className="k4-foot">
           <UsageBar usage={os.claude.usage} />
           <p className="k4-c-title">{hero?.project ?? "sessiz"}</p>
-          {!half && <p className="k4-c-sub">{waiting.length ? "sizi bekliyor" : "çalışıyor"}</p>}
+          {!half && (
+            <p className="k4-c-sub">
+              {waiting.length
+                ? "sizi bekliyor"
+                : delegating.length
+                  ? `${delegating.reduce((n, s) => n + s.agents, 0)} alt ajan çalışıyor`
+                  : "çalışıyor"}
+            </p>
+          )}
         </div>
       </div>
     );

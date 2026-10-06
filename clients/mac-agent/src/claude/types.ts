@@ -39,6 +39,10 @@ export interface ClaudeSessionWire {
   lastActiveAt: number;
   /** Token toplamı henüz hesaplanmadıysa (büyük dosya, arka planda) */
   parsing: boolean;
+  /** Sonucu gelmemiş alt ajan sayısı — oturum durmuş değil, işi devretmiş */
+  agents: number;
+  /** En son başlatılan alt ajanın açıklaması */
+  agentLabel: string | null;
   /** Son etkinlik (araç çağrısı / yanıt / prompt) */
   activity: SessionActivity | null;
   /** Son kullanıcı prompt'u — detay başlığında gösterilir */

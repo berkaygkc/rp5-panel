@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { FolderGit2, Pause, Play, Server, SkipBack, SkipForward } from "lucide-react";
+import { AgentChip } from "./AgentChip";
 import { useContainerHistory } from "@/lib/data/useContainerHistory";
 import { useContainerInfo, useContainerLogs } from "@/lib/data/useContainerDetail";
 import { runShortcutOnAgent } from "@/lib/data/runShortcut";
@@ -54,8 +55,19 @@ export default function PanelFull({
               <button className={`k4-row ${sel?.id === s.id ? "sel" : ""}`} onClick={() => setSub(s.id)}>
                 <i className={`k4-pulse ${s.status}`} />
                 <span className="k4-row-main">
-                  <span className="k4-row-t">{s.project}</span>
-                  <span className="k4-row-s">{s.status === "waiting" ? "sizi bekliyor" : "çalışıyor"}</span>
+                  <span className="k4-row-t">
+                    {s.project}
+                    {s.agents > 0 && <AgentChip count={s.agents} label={s.agentLabel} small />}
+                  </span>
+                  <span className="k4-row-s">
+                    {s.agents > 0 ? (
+                      <span className="k4-agent-label">{s.agentLabel ?? "alt ajan çalışıyor"}</span>
+                    ) : s.status === "waiting" ? (
+                      "sizi bekliyor"
+                    ) : (
+                      "çalışıyor"
+                    )}
+                  </span>
                 </span>
                 <span className="k4-row-x">{waited(s.lastActiveAt, os.now)}</span>
               </button>
@@ -65,6 +77,13 @@ export default function PanelFull({
         </ul>
         {sel && (
           <div className="k4-detail">
+            {sel.agents > 0 && (
+              <div className="k4-delegating">
+                <AgentChip count={sel.agents} label={sel.agentLabel} />
+                <span>{sel.agentLabel ?? "alt ajan çalışıyor"}</span>
+                <b>{sel.agents > 1 ? `${sel.agents} alt ajan` : "alt ajanda"}</b>
+              </div>
+            )}
             <p className="k4-quote">
               {sel.activity?.kind === "assistant" && sel.activity.text ? sel.activity.text : sel.activity?.text || "Çalışıyor"}
             </p>

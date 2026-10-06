@@ -1820,3 +1820,67 @@
     border-top: 1px solid rgba(255, 255, 255, 0.09);
   }
 }
+
+/* ── Alt ajan rozeti ────────────────────────────────────────────────────
+ * Oturum durmuş değil, işi devretmiş. Nabzı atar çünkü o sırada gerçekten
+ * bir şey çalışıyordur; renk uygulamanın kendi tonundan gelir. */
+.k4-agent {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex: none;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: hsl(var(--hue) / 0.2);
+  color: hsl(var(--hue));
+  animation: k4-agent-pulse 2.2s ease-in-out infinite;
+}
+.k4-agent.sm {
+  padding: 1px 4px;
+  gap: 2px;
+}
+.k4-agent b {
+  font: 700 9.5px/1 var(--lab-grotesk, ui-sans-serif), sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+@keyframes k4-agent-pulse {
+  50% {
+    background: hsl(var(--hue) / 0.42);
+  }
+}
+.k4-row-s .k4-agent-label {
+  color: hsl(var(--hue));
+}
+/* Satır başlığında rozet, adın hemen dibine yapışmasın */
+.k4-row-t .k4-agent {
+  margin-left: 6px;
+  vertical-align: middle;
+}
+.k4-delegating {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: hsl(var(--hue) / 0.12);
+  box-shadow: inset 0 0 0 1px hsl(var(--hue) / 0.26);
+  font-size: 12.5px;
+}
+.k4-delegating span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.k4-delegating b {
+  flex: none;
+  font-weight: 600;
+  color: hsl(var(--hue));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .k4-agent {
+    animation: none;
+  }
+}

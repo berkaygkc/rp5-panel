@@ -33,6 +33,10 @@ export interface ClaudeSession {
   startedAt: number;
   lastActiveAt: number;
   parsing: boolean;
+  /** Sonucu gelmemiş alt ajan sayısı — oturum durmuş değil, işi devretmiş */
+  agents: number;
+  /** En son başlatılan alt ajanın açıklaması */
+  agentLabel: string | null;
   activity: SessionActivity | null;
   lastPrompt: string | null;
 }

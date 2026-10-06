@@ -10,6 +10,7 @@ import { promises as fs, watchFile, unwatchFile, type Stats } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { addTokens, emptyTokens, feedEventsOf, parseLine, usageOf, type RawRecord } from "./parse.js";
+import { applyAgentRecord, runningAgents, type AgentPending } from "./agents.js";
 import { readLiveSessions } from "./liveSessions.js";
 import { clearNotice, postNotice } from "../notices/client.js";
 import { agentConfig } from "../config.js";
@@ -69,6 +70,8 @@ interface SessionCache {
   linesRemoved: number;
   activity: SessionActivity | null;
   lastPrompt: string | null;
+  /** Sonucu gelmemiş alt ajan çağrıları: id → etiket */
+  agents: AgentPending;
 }
 
 interface FeedSub {
@@ -236,6 +239,7 @@ export class ClaudeMonitor {
             linesRemoved: 0,
             activity: null,
             lastPrompt: null,
+            agents: new Map(),
           };
           this.cache.set(p, c);
         }
@@ -287,10 +291,16 @@ export class ClaudeMonitor {
       // de çalışıyor sayılır (bayrak güncellenmeden önceki an)
       // Çalışıyor kararının asıl kanıtı dökümün büyümesidir; Claude Code'un
       // "meşgul" bayrağı yalnızca uzun sessizliklerde destek olarak kullanılır.
+      // Alt ajan koşarken ana oturumun dökümü büyümez; "sizi bekliyor" demek
+      // yanlış olur — iş devredilmiştir, çalışıyor sayılır ve bekleme
+      // bildirimi tetiklenmez.
+      const running = runningAgents(c.agents);
       const active =
-        now - c.mtimeMs < WORKING_WINDOW_MS || (l?.busy === true && now - c.mtimeMs < BUSY_GRACE_MS);
+        now - c.mtimeMs < WORKING_WINDOW_MS ||
+        (l?.busy === true && now - c.mtimeMs < BUSY_GRACE_MS) ||
+        running.count > 0;
       const status: SessionStatus = l ? (active ? "working" : "waiting") : "closed";
-      return this.toWire(c, status);
+      return this.toWire(c, status, status === "closed" ? { count: 0, label: null } : running);
     });
     // Dökümü henüz oluşmamış canlı oturumlar (yeni açılmış) da görünsün
     const seen = new Set(all.map((s) => s.id));
@@ -312,6 +322,8 @@ export class ClaudeMonitor {
         startedAt: l.startedAt ?? Date.now(),
         lastActiveAt: l.updatedAt ?? Date.now(),
         parsing: false,
+        agents: 0,
+        agentLabel: null,
         activity: null,
         lastPrompt: null,
       });
@@ -349,6 +361,8 @@ export class ClaudeMonitor {
       c.startedAt ??= ts;
       c.lastActiveAt = Math.max(c.lastActiveAt ?? 0, ts);
     }
+    // Alt ajan başlatmaları ve sonuçları her kayıt türünde geçebilir
+    applyAgentRecord(c.agents, rec, Number.isFinite(ts) ? ts : Date.now());
 
     switch (rec.type) {
       case "ai-title":
@@ -399,7 +413,11 @@ export class ClaudeMonitor {
     }
   }
 
-  private toWire(c: SessionCache, status: SessionStatus): ClaudeSessionWire {
+  private toWire(
+    c: SessionCache,
+    status: SessionStatus,
+    running: { count: number; label: string | null } = { count: 0, label: null }
+  ): ClaudeSessionWire {
     const project = c.cwd ? path.basename(c.cwd) : c.slug.split("-").filter(Boolean).pop() ?? c.slug;
     return {
       id: c.id,
@@ -417,6 +435,8 @@ export class ClaudeMonitor {
       startedAt: c.startedAt ?? c.birthMs,
       lastActiveAt: Math.max(c.lastActiveAt ?? 0, c.mtimeMs),
       parsing: c.offset < c.size,
+      agents: running.count,
+      agentLabel: running.label,
       activity: c.activity,
       lastPrompt: c.lastPrompt,
     };
