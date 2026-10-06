@@ -11,7 +11,7 @@ import { runShortcutOnAgent } from "@/lib/data/runShortcut";
 import { useMedia } from "@/lib/data/useMedia";
 import { useShortcuts } from "@/lib/data/useShortcuts";
 import { waited, type LabModel } from "@/lib/kokpit/model";
-import type { Usage } from "@/lib/types/claude";
+import type { Usage, UsageLimit } from "@/lib/types/claude";
 
 /**
  * Güverte — altı panelin ızgarası.
@@ -375,20 +375,35 @@ function Compact({
  * ince bir çubuk olarak özetin dibinde durur ve dar panelde de kalır.
  */
 function UsageBar({ usage }: { usage: Usage }) {
-  const limit = usage.limits.find((l) => l.id === "session") ?? usage.limits[0];
-  if (!limit) return null;
-  const p = Math.max(0, Math.min(100, Math.round(limit.percent)));
+  const session = usage.limits.find((l) => l.id === "session");
+  // Haftalıklardan bağlayıcı olan gösterilir: en yüksek yüzdeli. Bugün "tüm
+  // modeller", yarın başka bir kota öne geçerse kart kendiliğinden onu yazar.
+  const weekly = usage.limits
+    .filter((l) => l.id.startsWith("week"))
+    .sort((a, b) => b.percent - a.percent)[0];
+
+  const rows: { key: string; limit: UsageLimit }[] = [];
+  if (session) rows.push({ key: "oturum", limit: session });
+  if (weekly) rows.push({ key: "hafta", limit: weekly });
+  if (rows.length === 0) return null;
+
   return (
     <span className="k4-usage">
-      <span className="k4-usage-head">
-        <span className="k4-usage-l">plan · {limit.label}</span>
-        <span className="k4-usage-v" style={{ color: limitColor(p) }}>
-          %{p}
-        </span>
-      </span>
-      <span className="k4-usage-track">
-        <span style={{ width: `${Math.max(2, p)}%`, background: limitColor(p) }} />
-      </span>
+      <span className="k4-usage-l">plan</span>
+      {rows.map(({ key, limit }) => {
+        const p = Math.max(0, Math.min(100, Math.round(limit.percent)));
+        return (
+          <span key={key} className="k4-usage-row" title={limit.label}>
+            <span className="k4-usage-k">{key}</span>
+            <span className="k4-usage-track">
+              <span style={{ width: `${Math.max(2, p)}%`, background: limitColor(p) }} />
+            </span>
+            <span className="k4-usage-v" style={{ color: limitColor(p) }}>
+              %{p}
+            </span>
+          </span>
+        );
+      })}
     </span>
   );
 }

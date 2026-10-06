@@ -1687,30 +1687,31 @@
   display: block;
   margin-bottom: 8px;
 }
-.k4-usage-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-}
 .k4-usage-l {
+  display: block;
+  margin-bottom: 5px;
   font-size: 9.5px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--k4-faint);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
-.k4-usage-v {
-  flex: none;
-  font: 600 12px/1 var(--lab-grotesk, ui-sans-serif), sans-serif;
-  font-variant-numeric: tabular-nums;
+/* Satır: kısa etiket · çubuk · yüzde. Etiket sabit genişlikte ki iki satırın
+ * çubukları hizalı başlasın; dar panelde de bu üçlü sığar. */
+.k4-usage-row {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) 30px;
+  align-items: center;
+  gap: 7px;
+  margin-top: 5px;
+}
+.k4-usage-k {
+  font-size: 10px;
+  line-height: 1;
+  color: var(--k4-dim);
 }
 .k4-usage-track {
   display: block;
   height: 3px;
-  margin-top: 4px;
   border-radius: 2px;
   background: var(--k4-track);
   overflow: hidden;
@@ -1720,6 +1721,11 @@
   height: 100%;
   border-radius: 2px;
   transition: width 600ms var(--k4-ease);
+}
+.k4-usage-v {
+  font: 600 10.5px/1 var(--lab-grotesk, ui-sans-serif), sans-serif;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 
 .k4-split.claude {
